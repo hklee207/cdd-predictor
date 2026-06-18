@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>CDD Predictor — US &amp; Japan Golf Club Valuation and M&amp;A Market Assessment</title>
+  <style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;background:#F1F5F9;color:#1E293B}
+header{background:#0F172A;padding:12px 24px;display:flex;align-items:baseline;gap:14px}
+.app-title{color:#F8FAFC;font-size:16px;font-weight:700}
+.app-sub{color:#475569;font-size:12px}
+.content{padding:24px;max-width:1200px;margin:0 auto}
+.project-bar{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.project-pill{background:#0F172A;color:#94A3B8;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:.07em}
+.project-name{font-size:17px;font-weight:700}
+.project-meta{font-size:12px;color:#64748B}
+.cdd-warning{display:flex;align-items:flex-start;gap:8px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#92400E;line-height:1.5}
+.issue-banner{display:flex;align-items:flex-start;gap:10px;background:#0F172A;border-radius:8px;padding:12px 14px;margin-bottom:16px}
+.issue-label{flex-shrink:0;background:#1E293B;color:#94A3B8;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;text-transform:uppercase;letter-spacing:.1em;margin-top:1px}
+.issue-text{color:#E2E8F0;font-size:13px;line-height:1.5}
+.tree-container{background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:18px 18px 12px;margin-bottom:20px}
+.section-label{font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.07em}
+.scenarios-header-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.export-csv-btn{padding:5px 12px;background:#0F172A;color:#94A3B8;border:none;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;letter-spacing:.02em;transition:all .15s}
+.export-csv-btn:hover{background:#1E293B;color:#E2E8F0}
+.mece-gate-error{background:#FEF2F2;border:1px solid #FECACA;border-radius:6px;padding:8px 12px;font-size:12px;color:#DC2626;margin-bottom:10px}
+.so-what-block{display:flex;align-items:flex-start;gap:8px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:6px;padding:10px 12px}
+.so-what-label{flex-shrink:0;font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.1em;margin-top:2px}
+.so-what-text{font-size:13px;font-weight:700;color:#0F172A;line-height:1.4}
+.scenario-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.scenario-card{background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;transition:opacity .2s}
+.scenario-card.rejected{opacity:.5}
+.scenario-card.deleted{display:none}
+.scenario-header{display:flex;flex-direction:column;gap:6px}
+.scenario-top-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.scenario-badge{background:#F1F5F9;color:#64748B;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:.06em}
+.rejected-stamp{font-size:10px;color:#EF4444;font-weight:600;background:#FEF2F2;padding:2px 7px;border-radius:4px;border:1px solid #FECACA}
+.node-label{display:inline-block;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;text-transform:uppercase;letter-spacing:.08em}
+.nl-hyp{background:#EFF6FF;color:#1D4ED8}
+.nl-sub{background:#F0FDF4;color:#166534}
+.nl-confirm{background:#FFF7ED;color:#92400E}
+.nl-kill{background:#FEF2F2;color:#DC2626}
+.hyp-block{display:flex;flex-direction:column;gap:5px}
+.hyp-text{font-size:13px;font-weight:600;line-height:1.5;color:#1E293B}
+.rejected .hyp-text{text-decoration:line-through;text-decoration-color:#64748B}
+.mece-badge{display:flex;align-items:flex-start;gap:5px;padding:6px 10px;border-radius:6px;font-size:11px}
+.mece-ok{background:#F0FDF4;border:1px solid #BBF7D0;color:#166534}
+.mece-icon{font-size:12px;flex-shrink:0}
+.trigger-row{display:flex;flex-direction:column;gap:5px}
+.trigger-label{font-size:10px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.06em}
+.kw-list{display:flex;flex-wrap:wrap;gap:4px}
+.kw{background:#FEF9C3;color:#92400E;font-size:11px;font-weight:500;padding:2px 7px;border-radius:4px;border:1px solid #FDE68A}
+.sh-list{display:flex;flex-direction:column;gap:10px;border-top:1px solid #E2E8F0;padding-top:10px}
+.sh-block{display:flex;flex-direction:column;gap:6px}
+.sh-header{display:flex;align-items:flex-start;gap:8px}
+.sh-index{width:20px;height:20px;border-radius:50%;background:#F1F5F9;border:1px solid #E2E8F0;color:#64748B;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.sh-content{display:flex;flex-direction:column;gap:4px}
+.sh-text{font-size:12px;font-weight:600;color:#1E293B;line-height:1.45}
+.sh-leaf{margin-left:28px;display:flex;flex-direction:column;gap:5px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:6px;padding:8px 10px}
+.sh-kill{background:#FEF2F2;border-color:#FECACA}
+.leaf-row{display:flex;align-items:flex-start;gap:6px}
+.leaf-evidence{font-size:11px;color:#64748B;line-height:1.45}
+.leaf-expert-row{display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap}
+.expert-chip{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;white-space:nowrap;flex-shrink:0}
+.expert-chip-kill{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;white-space:nowrap;flex-shrink:0;background:#FEF2F2;color:#DC2626;border:1px solid #FECACA}
+.why-text{font-size:11px;color:#64748B;line-height:1.45}
+.why-label{font-weight:700;color:#94A3B8;font-size:9px;text-transform:uppercase;letter-spacing:.08em;margin-right:2px}
+.scenario-actions{display:flex;gap:8px;border-top:1px solid #E2E8F0;padding-top:12px;margin-top:2px}
+.btn-reject{flex:1;padding:7px 12px;border:1px solid #CBD5E1;background:white;color:#64748B;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
+.btn-reject:hover:not(:disabled){background:#F1F5F9;border-color:#94A3B8}
+.btn-reject:disabled{background:#F8FAFC;color:#94A3B8;cursor:default}
+.btn-delete-red{padding:7px 14px;border:1px solid #FECACA;background:white;color:#DC2626;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
+.btn-delete-red:hover{background:#FEF2F2;border-color:#FCA5A5}
+</style>
+</head>
+<body>
+  <header>
+    <span class="app-title">CDD Predictor</span>
+    <span class="app-sub">GLG Korea · Commercial Due Diligence · Hypothesis Framework</span>
+  </header>
+  <div class="content">
+    <div class="project-bar">
+      <span class="project-pill">Project</span>
+      <strong class="project-name">US &amp; Japan Golf Club Valuation and M&amp;A Market Assessment</strong>
+      <span class="project-meta">Glenwood Credit · KSL Capital (Heritage + Invited), Arcis, Concert Golf (Bain Capital), Apollo, South Street Partners, Arcis, ksl capital partners, Heritage Golf, Concert Golf</span>
+    </div>
+    
+    <div class="issue-banner">
+      <span class="issue-label">Issue</span>
+      <span class="issue-text">How does the industry KSL Capital (Heritage + Invited), Arcis, Concert Golf (Bain Capital), Apollo, South Street Partners, Arcis, ksl capital partners, Heritage Golf, Concert Golf operates in actually work — what drives demand, pricing, and participant behavior at the fundamental level?</span>
+    </div>
+    <div class="tree-container">
+      <span class="section-label">Hypothesis Tree · Root = Issue · Branches = Core Hypotheses per Value Driver</span>
+      <svg viewBox="0 0 920 220" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block">
+  <rect x="120" y="20" width="680" height="52" rx="8" fill="#0F172A"/>
+  <text x="460" y="38" text-anchor="middle" fill="#94A3B8" font-size="9" font-weight="700" letter-spacing="0.08em">ISSUE</text>
+  <text x="460" y="56" text-anchor="middle" fill="#E2E8F0" font-size="11">How does the industry KSL Capital (Heritage + Invited), Arcis, Concert Golf (Bain Capital), Apollo, South Stre…</text>
+  <path d="M 460 72 L 460 105 L 195.0 105 L 195.0 130" fill="none" stroke="#CBD5E1" stroke-width="1.5"/>
+  <rect x="80.0" y="130" width="230" height="52" rx="8" fill="#2563EB" class="hyp-node" data-id="market_dynamics"/>
+  <text x="195.0" y="146" text-anchor="middle" fill="rgba(255,255,255,0.7)" font-size="9" font-weight="700" letter-spacing="0.08em">SCENARIO 1 · MARKET_DYNAMICS</text>
+  <text x="195.0" y="163" text-anchor="middle" fill="white" font-size="12" font-weight="700">Market Dynamics</text>
+  <path d="M 460 72 L 460 105 L 460.0 105 L 460.0 130" fill="none" stroke="#CBD5E1" stroke-width="1.5"/>
+  <rect x="345.0" y="130" width="230" height="52" rx="8" fill="#059669" class="hyp-node" data-id="operational_model"/>
+  <text x="460.0" y="146" text-anchor="middle" fill="rgba(255,255,255,0.7)" font-size="9" font-weight="700" letter-spacing="0.08em">SCENARIO 2 · OPERATIONAL_MODEL</text>
+  <text x="460.0" y="163" text-anchor="middle" fill="white" font-size="12" font-weight="700">Operational Model</text>
+  <path d="M 460 72 L 460 105 L 725.0 105 L 725.0 130" fill="none" stroke="#CBD5E1" stroke-width="1.5"/>
+  <rect x="610.0" y="130" width="230" height="52" rx="8" fill="#D97706" class="hyp-node" data-id="competitive_movement"/>
+  <text x="725.0" y="146" text-anchor="middle" fill="rgba(255,255,255,0.7)" font-size="9" font-weight="700" letter-spacing="0.08em">SCENARIO 3 · COMPETITIVE_MOVEMENT</text>
+  <text x="725.0" y="163" text-anchor="middle" fill="white" font-size="12" font-weight="700">Competitive Movement</text>
+  <text x="460" y="216" text-anchor="middle" fill="#94A3B8" font-size="10">Keyword signal orders Scenario 1 · Sub-hypotheses and experts in cards below</text>
+</svg>
+    </div>
+    <div class="scenarios-header-row">
+      <span class="section-label">Predicted Scenarios</span>
+      <button class="export-csv-btn" onclick="exportCSV()">↓ Export CSV</button>
+    </div>
+    <div class="scenario-grid">
+        <div class="scenario-card" id="card-market_dynamics" data-template-id="market_dynamics">
+          <div class="so-what-block">
+            <span class="so-what-label">SO WHAT</span>
+            <p class="so-what-text">The market KSL Capital (Heritage + Invited), Arcis, Concert Golf (Bain Capital), Apollo, South Street Partners, Arcis, ksl capital partners, Heritage Golf, Concert Golf operates in has structural rules invisible from the outside — understanding them gives Glenwood Credit a real information edge</p>
+          </div>
+          <div class="scenario-header">
+            <div class="scenario-top-row">
+              <span class="scenario-badge">Scenario 1 · Market Dynamics</span>
+              <span class="rejected-stamp" id="stamp-market_dynamics" style="display:none"></span>
+            </div>
+            <div class="hyp-block">
+              <span class="node-label nl-hyp">Hypothesis</span>
+              <p class="hyp-text" id="hyp-market_dynamics">The dynamics of KSL Capital (Heritage + Invited), Arcis, Concert Golf (Bain Capital), Apollo, South Street Partners, Arcis, ksl capital partners, Heritage Golf, Concert Golf&#x27;s market are governed by structural forces that experienced insiders understand and can explain — forces that public data alone cannot reveal to Glenwood Credit.</p>
+            </div>
+            <div class="mece-badge mece-ok"><span class="mece-icon">✓</span><span>MECE · Demand logic · Pricing logic · Customer decision logic · Structural constraints</span></div>
+            
+          </div>
+          <div class="sh-list">
+            <div class="sh-block">
+              <div class="sh-header">
+                <div class="sh-index">1</div>
+                <div class="sh-content">
+                  <span class="node-label nl-sub">Sub-hypothesis</span>
+                  <p class="sh-text">Demand drivers are structural and identifiable — volume in this market follows patterns that experienced participants can explain</p>
+                </div>
+              </div>
+              <div class="sh-leaf sh-confirm">
+                <div class="leaf-row">
+                  <span class="node-label nl-confirm">Confirm Expert</span>
+                  <span class="leaf-evidence">Primary research with participants who track demand cycles and can decompose volume into structural vs. cyclical drivers</span>
+                </div>
+                <div class="leaf-expert-row">
+                  <span class="expert-chip" style="background:#2563EB18;color:#2563EB;border:1px solid #2563EB44">Industry Volume / Demand Tracker</span>
+                  <span class="why-text"><span class="why-label">WHY</span> If demand has no structural logic, the client cannot model it — making any forecast assumption arbitrary.</span>
+                </div>
+              </div>
+              <div class="sh-leaf sh-kill">
+                <div class="leaf-row">
+                  <span class="node-label nl-kill">Kill Expert</span>
+                  <span class="leaf-evidence">Volume is idiosyncratic and unpredictable — insiders confirm no structural demand logic exists and cycles cannot be explained ex ante</span>
+                </div>
+                <div class="leaf-expert-row">
+                  <span class="expert-chip-kill">Market Data Analyst</span>
+                </div>
+              </div>
+            </div>
+            <div class="sh-block">
+              <div class="sh-header">
+                <div class="sh-index">2</div>
+                <div class="sh-content">
+                  <span class="node-label nl-sub">Sub-hypothesis</span>
+                  <p class="sh-text">Pricing mechanisms follow a logic that industry participants understand and can benchmark — outsiders cannot derive it from public data alone</p>
+                </div>
+              </div>
+              <div class="sh-leaf sh-confirm">
+                <div class="leaf-row">
+                  <span class="node-label nl-confirm">Confirm Expert</span>
+                  <span class="leaf-evidence">Deep-dive with operators who have lived through price cycles and can explain the pricing levers, reference points, and negotiating dynamics</span>
+                </div>
+                <div class="leaf-expert-row">
+                  <span class="expert-chip" style="background:#D9770618;color:#D97706;border:1px solid #D9770644">Former Operator / Pricing Decision-Maker</span>
+                  <span class="why-text"><span class="why-label">WHY</span> Understanding pricing logic is the foundation for any revenue model — without it, the client is building on assumptions, not evidence.</span>
+                </div>
+              </div>
+              <div class="sh-leaf sh-kill">
+                <div class="leaf-row">
+                  <span class="node-label nl-kill">Kill Expert</span>
+                  <span class="leaf-evidence">Pricing is purely spot or market-driven with no structural logic — incumbents confirm prices are set by external forces they cannot influence</span>
+                </div>
+                <div class="leaf-expert-row">
+                  <span class="expert-chip-kill">Market Pricing Economist</span>
+                </div>
+              </div>
+            </div>
+            <div class="sh-block">
+              <div class="sh-header">
+                <div class="sh-index">3</div>
+                <div class="sh-content">
+                  <span class="node-label nl-sub">Sub-hypothesis</span>
+                  <p class="sh-text">Customer and participant decision-making follows a distinct pattern — join, purchase, or renew decisions have a repeatable internal logic</p>
+                </div>
+              </div>
+              <div class="sh-leaf sh-confirm">
+                <div class="leaf-row">
+                  <span class="node-label nl-confirm">Confirm Expert</span>
+                  <span class="leaf-evidence">Structured interviews with active participants who can walk through their actual decision process and explain what drives commitment</span>
+                </div>
+                <div class="leaf-expert-row">
+                  <span class="expert-chip" style="background:#05966918;color:#059669;border:1px solid #05966944">Active Customer / Participant Decision-Maker</span>
+                  <span class="why-text"><span class="why-label">WHY</span> A repeatable decision logic means the client can model customer behavior — without it, demand forecasting has no anchor.</span>
+                </div>
+              </div>
+              <div class="sh-leaf sh-kill">
+                <div class="leaf-row">
+                  <span class="node-label nl-kill">Kill Expert</span>
+                  <span class="leaf-evidence">Decisions are highly idiosyncratic — no repeatable pattern exists and even experienced participants cannot predict customer behavior reliably</span>
+                </div>
+                <div class="leaf-expert-row">
+                  <span class="expert-chip-kill">Consumer Behavior Researcher</span>
+                </div>
+              </div>
+            </div>
+            <div class="sh-block">
+              <div class="sh-header">
+                <div class="sh-index">4</div>
+                <div class="sh-content">
+                  <span class="node-label nl-sub">Sub-hypothesis</span>
+                  <p class="sh-text">Regulatory and structural constraints define the boundaries of the game — incumbents navigate these limits in ways outsiders cannot see</p>
+                </div>
+              </div>
+              <div class="sh-leaf sh-confirm">
+                <div class="leaf-row">
+                  <span class="node-label nl-confirm">Confirm Expert</span>
+                  <span class="leaf-evidence">Interviews with participants who have directly encountered regulatory or structural barriers and can explain the practical constraints on operators</span>
+                </div>
+                <div class="leaf-expert-row">
+                  <span class="expert-chip" style="background:#7C3AED18;color:#7C3AED;border:1px solid #7C3AED44">Industry Regulatory / Compliance Expert</span>
+                  <span class="why-text"><span class="why-label">WHY</span> Regulatory constraints that are invisible from the outside often explain competitive outcomes that look irrational in public data.</span>
+                </div>
+              </div>
+              <div class="sh-leaf sh-kill">
+                <div class="leaf-row">
+                  <span class="node-label nl-kill">Kill Expert</span>
+                  <span class="leaf-evidence">The regulatory environment is straightforward and imposes no meaningful constraint — incumbents confirm it does not shape competitive dynamics</span>
+                </div>
+                <div class="leaf-expert-row">
+                  <span class="expert-chip-kill">Industry Association Analyst</span>
+                </div>
+              </div>
+            </div></div>
+          <div class="scenario-actions">
+            <button class="btn-reject" id="btn-reject-market_dynamics" onclick="rejectScenario('market_dynamics', this)">Reject</button>
+            <button class="btn-delete-red" onclick="deleteScenario('market_dynamics')">Delete</button>
+          </div>
+        </div>
+        <div class="scenario-card" id="card-operational_model" data-template-id="operational_model">
+          <div class="so-what-block">
+            <span class="so-what-label">SO WHAT</span>
+            <p class="so-what-text">Companies like KSL Capital (Heritage + Invited), Arcis, Concert Golf (Bain Capital), Apollo, South Street Partners, Arcis, ksl capital partners, Heritage Golf, Concert Golf follow an operational logic opaque from the outside — an insider model of the unit economics is Glenwood Credit&#x27;s key evidence base</p>
+          </div>
+          <div class="scenario-header">
+            <div class="scenario-top-row">
+              <span class="scenario-badge">Scenario 2 · Operational Model</span>
+              <span class="rejected-stamp" id="stamp-operational_model" style="display:none"></span>
+            </div>
+            <div class="hyp-block">
+              <span class="node-label nl-hyp">Hypothesis</span>
+              <p class="hyp-text" id="hyp-operational_model">The economics of operating like KSL Capital (Heritage + Invited), Arcis, Concert Golf (Bain Capital), Apollo, South Street Partners, Arcis, ksl capital partners, Heritage Golf, Concert Golf follow a well-understood internal model that experienced practitioners can benchmark — and that deviates materially from what public data implies.</p>
+            </div>
+            <div class="mece-badge mece-ok"><span class="mece-icon">✓</span><span>MECE · Revenue model · Cost structure · Capital intensity · Operational KPIs</span></div>
+            
+          </div>
+          <div class="sh-list">
+            <div class="sh-block">
+              <div class="sh-header">
+                <div class="sh-index">1</div>
+                <div class="sh-content">
+                  <span class="node-label nl-sub">Sub-hypothesis</span>
+                  <p class="sh-text">The revenue model has identifiable levers — specific drivers of top-line performance that experienced operators track and actively manage</p>
+                </div>
+              </div>
+              <div class="sh-leaf sh-confirm">
+                <div class="leaf-row">
+                  <span class="node-label nl-confirm">Confirm Expert</span>
+                  <span class="leaf-evidence">Interviews with former GMs or operations heads who have managed the revenue lines and can explain which levers matter and by how much</span>
+                </div>
+                <div class="leaf-expert-row">
+                  <span class="expert-chip" style="background:#05966918;color:#059669;border:1px solid #05966944">Former GM / Operations Head at Peer Company</span>
+                  <span class="why-text"><span class="why-label">WHY</span> If the client cannot identify which levers drive revenue, no operating model is credible — the business becomes a black box.</span>
+                </div>
+              </div>
+              <div class="sh-leaf sh-kill">
+                <div class="leaf-row">
+                  <span class="node-label nl-kill">Kill Expert</span>
+                  <span class="leaf-evidence">Revenue is driven by external factors operators cannot influence — insiders confirm no controllable revenue levers exist within the business</span>
+                </div>
+                <div class="leaf-expert-row">
+                  <span class="expert-chip-kill">Revenue Modeling Specialist</span>
+                </div>
+              </div>
+            </div>
+            <div class="sh-block">
+              <div class="sh-header">
+                <div class="sh-index">2</div>
+                <div class="sh-content">
+                  <span class="node-label nl-sub">Sub-hypothesis</span>
+                  <p class="sh-text">The cost structure has identifiable fixed and variable drivers — and which costs are controllable vs. structural is known to experienced insiders</p>
+                </div>
+              </div>
+              <div class="sh-leaf sh-confirm">
+                <div class="leaf-row">
+                  <span class="node-label nl-confirm">Confirm Expert</span>
+                  <span class="leaf-evidence">Interviews with former CFOs or finance leads at peer operators who can walk through the actual cost build and flag what can and cannot be moved</span>
+                </div>
+                <div class="leaf-expert-row">
+                  <span class="expert-chip" style="background:#D9770618;color:#D97706;border:1px solid #D9770644">Former CFO / Finance Lead at Peer Operator</span>
+                  <span class="why-text"><span class="why-label">WHY</span> Without a cost model, any margin improvement thesis is speculative — the client needs insiders who have seen the actual cost build.</span>
+                </div>
+              </div>
+              <div class="sh-leaf sh-kill">
+                <div class="leaf-row">
+                  <span class="node-label nl-kill">Kill Expert</span>
+                  <span class="leaf-evidence">Cost structure is too site-specific to generalize — insiders confirm no benchmarkable cost framework applies across similar operators</span>
+                </div>
+                <div class="leaf-expert-row">
+                  <span class="expert-chip-kill">Cost Benchmarking Analyst</span>
+                </div>
+              </div>
+            </div>
+            <div class="sh-block">
+              <div class="sh-header">
+                <div class="sh-index">3</div>
+                <div class="sh-content">
+                  <span class="node-label nl-sub">Sub-hypothesis</span>
+                  <p class="sh-text">Capital requirements and asset intensity follow industry norms that experienced operators can benchmark and anticipate</p>
+                </div>
+              </div>
+              <div class="sh-leaf sh-confirm">
+                <div class="leaf-row">
+                  <span class="node-label nl-confirm">Confirm Expert</span>
+                  <span class="leaf-evidence">Interviews with capital allocators or operators who have made investment decisions and can explain what drives capex need and timing</span>
+                </div>
+                <div class="leaf-expert-row">
+                  <span class="expert-chip" style="background:#0891B218;color:#0891B2;border:1px solid #0891B244">Capital Allocation Executive / Former Operator</span>
+                  <span class="why-text"><span class="why-label">WHY</span> Unmodeled capex can destroy returns — insiders who have seen what is inside the walls can surface what public data never reveals.</span>
+                </div>
+              </div>
+              <div class="sh-leaf sh-kill">
+                <div class="leaf-row">
+                  <span class="node-label nl-kill">Kill Expert</span>
+                  <span class="leaf-evidence">Capex is lumpy and highly site-specific — insiders confirm no consistent asset intensity model applies and surprises are common</span>
+                </div>
+                <div class="leaf-expert-row">
+                  <span class="expert-chip-kill">Asset Condition Assessor</span>
+                </div>
+              </div>
+            </div>
+            <div class="sh-block">
+              <div class="sh-header">
+                <div class="sh-index">4</div>
+                <div class="sh-content">
+                  <span class="node-label nl-sub">Sub-hypothesis</span>
+                  <p class="sh-text">Operational performance is tracked through internal KPIs that are not publicly disclosed but are well understood by experienced practitioners</p>
+                </div>
+              </div>
+              <div class="sh-leaf sh-confirm">
+                <div class="leaf-row">
+                  <span class="node-label nl-confirm">Confirm Expert</span>
+                  <span class="leaf-evidence">Interviews with former operations executives who can name the specific KPIs they tracked and explain what thresholds signal health vs. distress</span>
+                </div>
+                <div class="leaf-expert-row">
+                  <span class="expert-chip" style="background:#7C3AED18;color:#7C3AED;border:1px solid #7C3AED44">Former Operations Executive at Peer Company</span>
+                  <span class="why-text"><span class="why-label">WHY</span> The KPIs insiders track but never disclose are the clearest signal of real operational health — they are exactly what expert calls can surface.</span>
+                </div>
+              </div>
+              <div class="sh-leaf sh-kill">
+                <div class="leaf-row">
+                  <span class="node-label nl-kill">Kill Expert</span>
+                  <span class="leaf-evidence">No consistent KPI framework exists — insiders confirm that each operator tracks different metrics and no benchmarkable standard applies</span>
+                </div>
+                <div class="leaf-expert-row">
+                  <span class="expert-chip-kill">Industry Benchmarking Analyst</span>
+                </div>
+              </div>
+            </div></div>
+          <div class="scenario-actions">
+            <button class="btn-reject" id="btn-reject-operational_model" onclick="rejectScenario('operational_model', this)">Reject</button>
+            <button class="btn-delete-red" onclick="deleteScenario('operational_model')">Delete</button>
+          </div>
+        </div>
+        <div class="scenario-card" id="card-competitive_movement" data-template-id="competitive_movement">
+          <div class="so-what-block">
+            <span class="so-what-label">SO WHAT</span>
+            <p class="so-what-text">The competitive landscape around companies like KSL Capital (Heritage + Invited), Arcis, Concert Golf (Bain Capital), Apollo, South Street Partners, Arcis, ksl capital partners, Heritage Golf, Concert Golf is at an inflection point — insiders can see the direction before it is visible to Glenwood Credit from the outside</p>
+          </div>
+          <div class="scenario-header">
+            <div class="scenario-top-row">
+              <span class="scenario-badge">Scenario 3 · Competitive Movement</span>
+              <span class="rejected-stamp" id="stamp-competitive_movement" style="display:none"></span>
+            </div>
+            <div class="hyp-block">
+              <span class="node-label nl-hyp">Hypothesis</span>
+              <p class="hyp-text" id="hyp-competitive_movement">The competitive dynamics around KSL Capital (Heritage + Invited), Arcis, Concert Golf (Bain Capital), Apollo, South Street Partners, Arcis, ksl capital partners, Heritage Golf, Concert Golf&#x27;s market are shifting in ways that experienced participants can identify — and the direction of shift is already knowable from insiders before it becomes visible externally.</p>
+            </div>
+            <div class="mece-badge mece-ok"><span class="mece-icon">✓</span><span>MECE · Industry structure evolution · Basis of competition shift · Disruptive entrant traction · Winner identification</span></div>
+            
+          </div>
+          <div class="sh-list">
+            <div class="sh-block">
+              <div class="sh-header">
+                <div class="sh-index">1</div>
+                <div class="sh-content">
+                  <span class="node-label nl-sub">Sub-hypothesis</span>
+                  <p class="sh-text">The industry structure is actively changing — consolidation, fragmentation, or disruption is underway in ways that participants can observe firsthand</p>
+                </div>
+              </div>
+              <div class="sh-leaf sh-confirm">
+                <div class="leaf-row">
+                  <span class="node-label nl-confirm">Confirm Expert</span>
+                  <span class="leaf-evidence">Interviews with M&amp;A veterans or operators who have seen peers consolidate and can describe the structural forces behind the change</span>
+                </div>
+                <div class="leaf-expert-row">
+                  <span class="expert-chip" style="background:#D9770618;color:#D97706;border:1px solid #D9770644">Industry M&amp;A Veteran / Former Acquirer</span>
+                  <span class="why-text"><span class="why-label">WHY</span> Structural change reshapes competitive advantage — understanding whether the industry is consolidating or fragmenting changes the entire strategic logic.</span>
+                </div>
+              </div>
+              <div class="sh-leaf sh-kill">
+                <div class="leaf-row">
+                  <span class="node-label nl-kill">Kill Expert</span>
+                  <span class="leaf-evidence">The industry structure is stable — insiders confirm no meaningful consolidation, fragmentation, or disruption is occurring or credibly coming</span>
+                </div>
+                <div class="leaf-expert-row">
+                  <span class="expert-chip-kill">Industry Structure Economist</span>
+                </div>
+              </div>
+            </div>
+            <div class="sh-block">
+              <div class="sh-header">
+                <div class="sh-index">2</div>
+                <div class="sh-content">
+                  <span class="node-label nl-sub">Sub-hypothesis</span>
+                  <p class="sh-text">The basis of competition is shifting — what it took to win five years ago is not what it takes to win today</p>
+                </div>
+              </div>
+              <div class="sh-leaf sh-confirm">
+                <div class="leaf-row">
+                  <span class="node-label nl-confirm">Confirm Expert</span>
+                  <span class="leaf-evidence">Interviews with former strategic operators who have actively adapted their competitive approach and can articulate what changed and why</span>
+                </div>
+                <div class="leaf-expert-row">
+                  <span class="expert-chip" style="background:#2563EB18;color:#2563EB;border:1px solid #2563EB44">Former Strategic Operator at Peer Company</span>
+                  <span class="why-text"><span class="why-label">WHY</span> If what it takes to win has changed, the incumbents still operating on old playbooks are at risk — and that risk is invisible from public data.</span>
+                </div>
+              </div>
+              <div class="sh-leaf sh-kill">
+                <div class="leaf-row">
+                  <span class="node-label nl-kill">Kill Expert</span>
+                  <span class="leaf-evidence">The basis of competition is unchanged — long-tenured incumbents confirm the same advantages have delivered wins throughout their careers</span>
+                </div>
+                <div class="leaf-expert-row">
+                  <span class="expert-chip-kill">Long-Tenured Industry Executive</span>
+                </div>
+              </div>
+            </div>
+            <div class="sh-block">
+              <div class="sh-header">
+                <div class="sh-index">3</div>
+                <div class="sh-content">
+                  <span class="node-label nl-sub">Sub-hypothesis</span>
+                  <p class="sh-text">New entrant models or substitute offerings are testing the competitive boundaries and some are gaining real traction among participants</p>
+                </div>
+              </div>
+              <div class="sh-leaf sh-confirm">
+                <div class="leaf-row">
+                  <span class="node-label nl-confirm">Confirm Expert</span>
+                  <span class="leaf-evidence">Interviews with incumbents who have faced new entrants and can assess their threat credibly — including where entrants have won and where they have failed</span>
+                </div>
+                <div class="leaf-expert-row">
+                  <span class="expert-chip" style="background:#05966918;color:#059669;border:1px solid #05966944">Incumbent Operator Who Faced Disruption</span>
+                  <span class="why-text"><span class="why-label">WHY</span> Disruptors who have gained real traction change the risk profile of incumbents — this is exactly the intelligence that external research cannot surface.</span>
+                </div>
+              </div>
+              <div class="sh-leaf sh-kill">
+                <div class="leaf-row">
+                  <span class="node-label nl-kill">Kill Expert</span>
+                  <span class="leaf-evidence">New entrants have retreated or remained marginal — incumbents confirm the competitive boundaries are holding and no substitute has gained meaningful share</span>
+                </div>
+                <div class="leaf-expert-row">
+                  <span class="expert-chip-kill">Former New Entrant / Disruptor Executive</span>
+                </div>
+              </div>
+            </div>
+            <div class="sh-block">
+              <div class="sh-header">
+                <div class="sh-index">4</div>
+                <div class="sh-content">
+                  <span class="node-label nl-sub">Sub-hypothesis</span>
+                  <p class="sh-text">The likely winners and losers in the next competitive cycle are already visible to informed insiders — even if not yet to the broader market</p>
+                </div>
+              </div>
+              <div class="sh-leaf sh-confirm">
+                <div class="leaf-row">
+                  <span class="node-label nl-confirm">Confirm Expert</span>
+                  <span class="leaf-evidence">Interviews with former sector heads or well-networked industry participants who have visibility across competitors and can identify emerging patterns</span>
+                </div>
+                <div class="leaf-expert-row">
+                  <span class="expert-chip" style="background:#7C3AED18;color:#7C3AED;border:1px solid #7C3AED44">Former Sector Head / Industry Networker</span>
+                  <span class="why-text"><span class="why-label">WHY</span> Insiders who have seen competitors up close often know who is winning before financial results confirm it — that early read is the value of expert intelligence.</span>
+                </div>
+              </div>
+              <div class="sh-leaf sh-kill">
+                <div class="leaf-row">
+                  <span class="node-label nl-kill">Kill Expert</span>
+                  <span class="leaf-evidence">The competitive outcome is genuinely uncertain — even the most informed insiders disagree and cannot identify likely winners with any confidence</span>
+                </div>
+                <div class="leaf-expert-row">
+                  <span class="expert-chip-kill">Multi-Operator Perspectives Analyst</span>
+                </div>
+              </div>
+            </div></div>
+          <div class="scenario-actions">
+            <button class="btn-reject" id="btn-reject-competitive_movement" onclick="rejectScenario('competitive_movement', this)">Reject</button>
+            <button class="btn-delete-red" onclick="deleteScenario('competitive_movement')">Delete</button>
+          </div>
+        </div></div>
+  </div>
+  <script>
+const LOG_KEY = 'cdd_rejection_log';
+window.CDD_DATA = {"scenarios": [{"template_id": "market_dynamics", "name": "Market Dynamics", "value_driver": "market_dynamics", "sub_hypotheses": [{"text": "Demand drivers are structural and identifiable \u2014 volume in this market follows patterns that experienced participants can explain", "confirm_evidence": "Primary research with participants who track demand cycles and can decompose volume into structural vs. cyclical drivers", "confirm_expert": "Industry Volume / Demand Tracker", "kill_evidence": "Volume is idiosyncratic and unpredictable \u2014 insiders confirm no structural demand logic exists and cycles cannot be explained ex ante", "kill_expert": "Market Data Analyst"}, {"text": "Pricing mechanisms follow a logic that industry participants understand and can benchmark \u2014 outsiders cannot derive it from public data alone", "confirm_evidence": "Deep-dive with operators who have lived through price cycles and can explain the pricing levers, reference points, and negotiating dynamics", "confirm_expert": "Former Operator / Pricing Decision-Maker", "kill_evidence": "Pricing is purely spot or market-driven with no structural logic \u2014 incumbents confirm prices are set by external forces they cannot influence", "kill_expert": "Market Pricing Economist"}, {"text": "Customer and participant decision-making follows a distinct pattern \u2014 join, purchase, or renew decisions have a repeatable internal logic", "confirm_evidence": "Structured interviews with active participants who can walk through their actual decision process and explain what drives commitment", "confirm_expert": "Active Customer / Participant Decision-Maker", "kill_evidence": "Decisions are highly idiosyncratic \u2014 no repeatable pattern exists and even experienced participants cannot predict customer behavior reliably", "kill_expert": "Consumer Behavior Researcher"}, {"text": "Regulatory and structural constraints define the boundaries of the game \u2014 incumbents navigate these limits in ways outsiders cannot see", "confirm_evidence": "Interviews with participants who have directly encountered regulatory or structural barriers and can explain the practical constraints on operators", "confirm_expert": "Industry Regulatory / Compliance Expert", "kill_evidence": "The regulatory environment is straightforward and imposes no meaningful constraint \u2014 incumbents confirm it does not shape competitive dynamics", "kill_expert": "Industry Association Analyst"}]}, {"template_id": "operational_model", "name": "Operational Model", "value_driver": "operational_model", "sub_hypotheses": [{"text": "The revenue model has identifiable levers \u2014 specific drivers of top-line performance that experienced operators track and actively manage", "confirm_evidence": "Interviews with former GMs or operations heads who have managed the revenue lines and can explain which levers matter and by how much", "confirm_expert": "Former GM / Operations Head at Peer Company", "kill_evidence": "Revenue is driven by external factors operators cannot influence \u2014 insiders confirm no controllable revenue levers exist within the business", "kill_expert": "Revenue Modeling Specialist"}, {"text": "The cost structure has identifiable fixed and variable drivers \u2014 and which costs are controllable vs. structural is known to experienced insiders", "confirm_evidence": "Interviews with former CFOs or finance leads at peer operators who can walk through the actual cost build and flag what can and cannot be moved", "confirm_expert": "Former CFO / Finance Lead at Peer Operator", "kill_evidence": "Cost structure is too site-specific to generalize \u2014 insiders confirm no benchmarkable cost framework applies across similar operators", "kill_expert": "Cost Benchmarking Analyst"}, {"text": "Capital requirements and asset intensity follow industry norms that experienced operators can benchmark and anticipate", "confirm_evidence": "Interviews with capital allocators or operators who have made investment decisions and can explain what drives capex need and timing", "confirm_expert": "Capital Allocation Executive / Former Operator", "kill_evidence": "Capex is lumpy and highly site-specific \u2014 insiders confirm no consistent asset intensity model applies and surprises are common", "kill_expert": "Asset Condition Assessor"}, {"text": "Operational performance is tracked through internal KPIs that are not publicly disclosed but are well understood by experienced practitioners", "confirm_evidence": "Interviews with former operations executives who can name the specific KPIs they tracked and explain what thresholds signal health vs. distress", "confirm_expert": "Former Operations Executive at Peer Company", "kill_evidence": "No consistent KPI framework exists \u2014 insiders confirm that each operator tracks different metrics and no benchmarkable standard applies", "kill_expert": "Industry Benchmarking Analyst"}]}, {"template_id": "competitive_movement", "name": "Competitive Movement", "value_driver": "competitive_movement", "sub_hypotheses": [{"text": "The industry structure is actively changing \u2014 consolidation, fragmentation, or disruption is underway in ways that participants can observe firsthand", "confirm_evidence": "Interviews with M&A veterans or operators who have seen peers consolidate and can describe the structural forces behind the change", "confirm_expert": "Industry M&A Veteran / Former Acquirer", "kill_evidence": "The industry structure is stable \u2014 insiders confirm no meaningful consolidation, fragmentation, or disruption is occurring or credibly coming", "kill_expert": "Industry Structure Economist"}, {"text": "The basis of competition is shifting \u2014 what it took to win five years ago is not what it takes to win today", "confirm_evidence": "Interviews with former strategic operators who have actively adapted their competitive approach and can articulate what changed and why", "confirm_expert": "Former Strategic Operator at Peer Company", "kill_evidence": "The basis of competition is unchanged \u2014 long-tenured incumbents confirm the same advantages have delivered wins throughout their careers", "kill_expert": "Long-Tenured Industry Executive"}, {"text": "New entrant models or substitute offerings are testing the competitive boundaries and some are gaining real traction among participants", "confirm_evidence": "Interviews with incumbents who have faced new entrants and can assess their threat credibly \u2014 including where entrants have won and where they have failed", "confirm_expert": "Incumbent Operator Who Faced Disruption", "kill_evidence": "New entrants have retreated or remained marginal \u2014 incumbents confirm the competitive boundaries are holding and no substitute has gained meaningful share", "kill_expert": "Former New Entrant / Disruptor Executive"}, {"text": "The likely winners and losers in the next competitive cycle are already visible to informed insiders \u2014 even if not yet to the broader market", "confirm_evidence": "Interviews with former sector heads or well-networked industry participants who have visibility across competitors and can identify emerging patterns", "confirm_expert": "Former Sector Head / Industry Networker", "kill_evidence": "The competitive outcome is genuinely uncertain \u2014 even the most informed insiders disagree and cannot identify likely winners with any confidence", "kill_expert": "Multi-Operator Perspectives Analyst"}]}]};
+
+function loadLog() {
+  try { return JSON.parse(localStorage.getItem(LOG_KEY) || '{}'); } catch { return {}; }
+}
+function saveLog(log) { localStorage.setItem(LOG_KEY, JSON.stringify(log)); }
+
+function rejectScenario(templateId, btn) {
+  const card = document.getElementById('card-' + templateId);
+  const stamp = document.getElementById('stamp-' + templateId);
+  const hyp = document.getElementById('hyp-' + templateId);
+  card.classList.add('rejected');
+  if (hyp) hyp.style.textDecoration = 'line-through';
+  stamp.textContent = 'Rejected · ' + new Date().toLocaleString();
+  stamp.style.display = 'inline';
+  btn.textContent = 'Rejected ✓';
+  btn.disabled = true;
+  const log = loadLog();
+  log[templateId] = new Date().toISOString();
+  saveLog(log);
+  document.querySelectorAll('.hyp-node[data-id="' + templateId + '"]').forEach(n => {
+    n.setAttribute('opacity', '0.35');
+  });
+}
+
+function deleteScenario(templateId) {
+  if (!confirm('Delete this scenario? It will be removed with no record saved.')) return;
+  document.getElementById('card-' + templateId).classList.add('deleted');
+  document.querySelectorAll('.hyp-node[data-id="' + templateId + '"]').forEach(n => {
+    const g = n.closest('g');
+    if (g) g.style.opacity = '0.1';
+  });
+}
+
+function exportCSV() {
+  const log = loadLog();
+  const rows = [];
+  for (const s of window.CDD_DATA.scenarios) {
+    const card = document.getElementById('card-' + s.template_id);
+    const isDeleted = card && card.classList.contains('deleted');
+    const isRejected = Object.prototype.hasOwnProperty.call(log, s.template_id);
+    const status = isDeleted ? 'deleted' : isRejected ? 'rejected' : 'active';
+    for (const sh of s.sub_hypotheses) {
+      rows.push([
+        s.name, s.value_driver, sh.text,
+        sh.confirm_evidence, sh.confirm_expert,
+        sh.kill_evidence, sh.kill_expert,
+        status,
+      ]);
+    }
+  }
+  const headers = ['Scenario','Value_Driver','Sub_Hypothesis','Confirm_Evidence','Confirm_Expert','Kill_Evidence','Kill_Expert','Status'];
+  const lines = [headers.join(','), ...rows.map(r => r.map(v => '"' + String(v || '').replace(/"/g, '""') + '"').join(','))];
+  const blob = new Blob(['﻿' + lines.join('\n')], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'cdd_output.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Restore rejected state from localStorage on load
+(function() {
+  const log = loadLog();
+  for (const [tid, ts] of Object.entries(log)) {
+    const card = document.getElementById('card-' + tid);
+    if (!card) continue;
+    card.classList.add('rejected');
+    const stamp = document.getElementById('stamp-' + tid);
+    if (stamp) { stamp.textContent = 'Rejected · ' + new Date(ts).toLocaleString(); stamp.style.display = 'inline'; }
+    const btn = document.getElementById('btn-reject-' + tid);
+    if (btn) { btn.textContent = 'Rejected ✓'; btn.disabled = true; }
+    const hyp = document.getElementById('hyp-' + tid);
+    if (hyp) hyp.style.textDecoration = 'line-through';
+  }
+})();
+</script>
+</body>
+</html>
