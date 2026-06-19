@@ -75,6 +75,24 @@ KEYWORD_GROUPS = {
         'transaction', 'attrition', 'churn', 'retention', 'switching cost',
         'membership', 'member retention',
     ],
+    'growth_scalability': [
+        'growth', 'scale', 'scalability', 'expansion', 'penetration',
+        'new market', 'geographic expansion', 'international',
+        'organic growth', 'inorganic growth', 'growth trajectory',
+        'pipeline', 'backlog', 'runway', 'market penetration',
+        'share gain', 'whitespace', 'greenfield', 'brownfield',
+        'same-store', 'comparable', 'unit growth', 'store count',
+        'addressable', 'tam expansion', 'growth ceiling',
+    ],
+    'risk_regulatory': [
+        'risk', 'regulatory', 'regulation', 'compliance',
+        'legal', 'litigation', 'liability', 'environmental',
+        'esg', 'sustainability', 'governance', 'political',
+        'geopolitical', 'tariff', 'sanction', 'subsidy',
+        'license', 'permit', 'zoning', 'barrier to entry',
+        'antitrust', 'concentration', 'monopoly', 'policy',
+        'safety', 'data privacy', 'ip', 'patent',
+    ],
 }
 
 CDD_SIGNALS = [
@@ -287,52 +305,333 @@ VALUE_DRIVERS = [
             },
         ],
     },
+    {
+        'id': 'growth_scalability',
+        'name': 'Growth & Scalability',
+        'value_driver': 'growth_scalability',
+        'color': '#7C3AED',
+        'keyword_group': 'growth_scalability',
+        'so_what': lambda f: f"The growth trajectory of companies like {f['reference_company'] or 'reference_company'} depends on scalability constraints that only insiders can quantify — {f['client'] or 'the client'} needs this to size the opportunity",
+        'issue': lambda f: f"Can {f['reference_company'] or 'reference_company'}'s growth model scale beyond its current footprint, or are there structural ceilings that limit expansion?",
+        'hypothesis': lambda f: f"The growth and scalability of {f['reference_company'] or 'reference_company'}'s model is governed by replicability constraints that experienced operators understand — constraints that are not visible from external data alone.",
+        'mece_axes': ['Organic growth levers', 'Geographic / segment expansion', 'Scalability constraints', 'Growth sustainability'],
+        'sub_hypotheses': [
+            {
+                'text': 'Organic growth levers exist and are identifiable — experienced operators can name the specific drivers of same-unit or same-store growth',
+                'confirm_evidence': 'Interviews with operators who have driven organic growth and can explain which levers moved the needle',
+                'confirm_expert': 'Former Growth / Expansion Executive',
+                'confirm_expert_color': '#7C3AED',
+                'kill_evidence': 'Organic growth has stalled — insiders confirm the addressable pool is saturated and no lever reliably drives incremental growth',
+                'kill_expert': 'Market Saturation Analyst',
+                'rationale': 'If no organic growth levers exist, the investment thesis must rely entirely on M&A or cost cuts — a fundamentally different risk profile.',
+            },
+            {
+                'text': 'Geographic or segment expansion is feasible — the model can be replicated in new markets without losing its core economics',
+                'confirm_evidence': 'Interviews with executives who have expanded into new geographies or segments and can assess replicability',
+                'confirm_expert': 'Former Regional Expansion Lead',
+                'confirm_expert_color': '#2563EB',
+                'kill_evidence': 'Expansion attempts have failed or economics degrade sharply in new markets — the model is not portable',
+                'kill_expert': 'Failed Expansion Post-Mortem Analyst',
+                'rationale': 'A model that only works in its home market has a hard ceiling — understanding portability is critical to sizing the opportunity.',
+            },
+            {
+                'text': 'Scalability constraints are known and manageable — insiders can identify the bottlenecks that limit growth and assess whether they can be overcome',
+                'confirm_evidence': 'Interviews with operators who have hit scale limits and can explain what constrained them and how they adapted',
+                'confirm_expert': 'Former COO / Scale Operations Leader',
+                'confirm_expert_color': '#059669',
+                'kill_evidence': 'Scale constraints are structural and cannot be overcome — insiders confirm the model breaks above a certain size threshold',
+                'kill_expert': 'Operations Scalability Consultant',
+                'rationale': 'Unidentified scale constraints can destroy returns post-acquisition — insiders who have hit the ceiling know where it is.',
+            },
+            {
+                'text': 'The current growth rate is sustainable and not artificially inflated by one-time factors',
+                'confirm_evidence': 'Interviews with finance leaders who can decompose growth into sustainable vs. one-time components',
+                'confirm_expert': 'Former CFO / FP&A Lead at Peer',
+                'confirm_expert_color': '#D97706',
+                'kill_evidence': 'Growth is driven by non-recurring tailwinds — insiders confirm the current trajectory is not sustainable',
+                'kill_expert': 'Growth Sustainability Skeptic',
+                'rationale': 'Paying for unsustainable growth is the most common PE mistake — insiders can separate signal from noise.',
+            },
+        ],
+    },
+    {
+        'id': 'risk_regulatory',
+        'name': 'Risk & Regulatory',
+        'value_driver': 'risk_regulatory',
+        'color': '#DC2626',
+        'keyword_group': 'risk_regulatory',
+        'so_what': lambda f: f"Companies like {f['reference_company'] or 'reference_company'} face regulatory and structural risks that are invisible from the outside — {f['client'] or 'the client'} needs insider intelligence to map the risk landscape",
+        'issue': lambda f: f"What regulatory, legal, or structural risks does {f['reference_company'] or 'reference_company'}'s business face that could materially affect its value or operations?",
+        'hypothesis': lambda f: f"The risk and regulatory environment around {f['reference_company'] or 'reference_company'} contains material exposures that experienced industry participants can identify and quantify — exposures that are not visible in public filings or standard due diligence.",
+        'mece_axes': ['Regulatory exposure', 'Legal / litigation risk', 'ESG / sustainability risk', 'Policy / political risk'],
+        'sub_hypotheses': [
+            {
+                'text': 'Material regulatory risks exist that are not fully captured in public disclosures — experienced operators know which regulations actually bite',
+                'confirm_evidence': 'Interviews with compliance leaders who have navigated regulatory challenges and can identify the real exposure points',
+                'confirm_expert': 'Former Chief Compliance Officer',
+                'confirm_expert_color': '#DC2626',
+                'kill_evidence': 'The regulatory environment is benign — insiders confirm no material regulatory risk exists beyond what is publicly disclosed',
+                'kill_expert': 'Industry Regulatory Affairs Analyst',
+                'rationale': 'Hidden regulatory risk can destroy deal value — insiders who have dealt with regulators know what is coming before it is public.',
+            },
+            {
+                'text': 'Legal or litigation risks are identifiable and quantifiable — industry participants can assess the probability and magnitude of legal exposure',
+                'confirm_evidence': 'Interviews with legal counsel or executives who have managed litigation and can assess the realistic exposure',
+                'confirm_expert': 'Former General Counsel at Peer Company',
+                'confirm_expert_color': '#D97706',
+                'kill_evidence': 'Litigation risk is minimal — legal experts confirm no credible exposure beyond routine business disputes',
+                'kill_expert': 'Industry Litigation Analyst',
+                'rationale': 'Unquantified litigation tail risk is a deal-killer for conservative buyers — expert intelligence can size the exposure.',
+            },
+            {
+                'text': 'ESG or sustainability factors pose real operational or financial risk — not just reputational',
+                'confirm_evidence': 'Interviews with sustainability officers who can identify concrete financial impacts of ESG-related requirements',
+                'confirm_expert': 'Former Sustainability / ESG Officer',
+                'confirm_expert_color': '#059669',
+                'kill_evidence': 'ESG factors are immaterial — insiders confirm no meaningful financial impact from sustainability requirements',
+                'kill_expert': 'ESG Materiality Assessor',
+                'rationale': 'ESG risks that translate to real costs or capital requirements change the return profile — insiders can separate material from immaterial.',
+            },
+            {
+                'text': 'Policy or political changes could materially alter the operating environment — and the direction of change is predictable to informed insiders',
+                'confirm_evidence': 'Interviews with government affairs leaders or lobbyists who can assess the likelihood and impact of policy changes',
+                'confirm_expert': 'Former Government Affairs / Policy Lead',
+                'confirm_expert_color': '#7C3AED',
+                'kill_evidence': 'The policy environment is stable — insiders confirm no credible political risk to the business model',
+                'kill_expert': 'Policy Risk Analyst',
+                'rationale': 'Policy shifts can create or destroy entire business models — insiders with government relationships see changes before they become public.',
+            },
+        ],
+    },
 ]
+
+
+def _detect_scope(ref, proj, wants):
+    """Detect whether hypotheses should anchor on the company or the market.
+
+    Returns 'company', 'market', or 'ambiguous'.
+    """
+    ref_lower = ref.lower().strip()
+    proj_lower = proj.lower().strip()
+    wants_lower = wants.lower().strip()
+    if not ref_lower:
+        return 'market'
+
+    # Company-level signals from client_wants
+    wants_company = any(p in wants_lower for p in [
+        f'assess {ref_lower}', f'evaluate {ref_lower}',
+        f'{ref_lower} a good', f'is {ref_lower}',
+        f'should we acquire {ref_lower}', f'should we buy {ref_lower}',
+        f'{ref_lower}\'s health', f'{ref_lower}\'s value',
+        f'diligence on {ref_lower}', f'review of {ref_lower}',
+        f'invest in {ref_lower}',
+    ])
+
+    # Company-level signals from project_name
+    proj_company = any(p in proj_lower for p in [
+        f'{ref_lower} diligence', f'{ref_lower} acquisition',
+        f'{ref_lower} investment', f'{ref_lower} assessment',
+        f'{ref_lower} review', f'{ref_lower} dd',
+        f'{ref_lower} valuation', f'{ref_lower} evaluation',
+    ])
+
+    # Market-level signals from client_wants
+    wants_market = any(p in wants_lower for p in [
+        'understand the market', 'understand the industry',
+        'how the market', 'how the industry', 'market dynamics',
+        'industry structure', 'market intelligence', 'sector',
+        'landscape', 'market overview', 'industry overview',
+    ])
+
+    # Market-level signals from project_name
+    proj_market = any(p in proj_lower for p in [
+        'market diligence', 'market intelligence', 'market study',
+        'market assessment', 'industry', 'sector',
+    ])
+
+    # Decision logic
+    if wants_company:
+        return 'company'
+    if wants_market:
+        return 'market'
+    if proj_company:
+        return 'company'
+    if proj_market:
+        return 'market'
+    # Tie-break: if project names the company but wants is vague, client_wants wins
+    if ref_lower in proj_lower and not wants_market:
+        return 'company'
+    return 'ambiguous'
 
 
 def _build_llm_prompt(form_data, ordered_drivers):
     ref = form_data.get('reference_company', '')
+    proj = form_data.get('proj_name', '')
     wants = form_data.get('client_wants', '')
     questions = form_data.get('verify_questions', '')
     driver_list = '\n'.join(
         f'{i+1}. {d["id"]} ({d["name"]})' for i, d in enumerate(ordered_drivers)
     )
-    schema = '''
+
+    scope = _detect_scope(ref, proj, wants)
+
+    if scope == 'company':
+        schema = '''
 {
-  "issue": "one specific question sentence naming the real company/market",
+  "issue": "<question about the reference company derived from the learning objective>",
   "scenarios": [
     {
-      "driver_id": "<market_dynamics | operational_model | competitive_movement>",
-      "name": "<specific 8-15 word headline naming real companies, competitors, forces>",
-      "so_what": "<specific 1-2 sentence so-what for the client>",
-      "hypothesis": "<specific falsifiable hypothesis sentence>",
+      "driver_id": "<market_dynamics | operational_model | competitive_movement | growth_scalability | risk_regulatory>",
+      "name": "<8-15 word headline — MAY name the reference company>",
+      "so_what": "<why this matters for the client's decision about the company>",
+      "hypothesis": "<falsifiable claim about the reference company>",
       "sub_hypotheses": [
         {
-          "text": "<specific sub-hypothesis naming real market dynamics>",
-          "confirm_evidence": "<specific confirming evidence>",
-          "confirm_expert": "<specific role naming company or market, e.g. Former LG ES cell-cost lead>",
-          "kill_evidence": "<specific killing evidence>",
-          "kill_expert": "<specific role>",
-          "rationale": "<why this matters for the client decision>"
+          "text": "<specific sub-hypothesis about the company>",
+          "experts": [
+            {
+              "name": "<specific role at the company or a peer>",
+              "evidence": "<what this insider can reveal>",
+              "rationale": "<why this person has the right vantage point>"
+            }
+          ]
         }
       ]
     }
   ]
 }'''
+        anchoring_block = (
+            f"SCOPE: COMPANY-LEVEL — the project and learning objective ask about \"{ref}\" directly.\n"
+            f"Hypotheses and sub-hypotheses SHOULD be about \"{ref}\" specifically.\n"
+            f'Example: "{ref}\'s margins are structurally thin because..." is CORRECT.\n'
+            "Experts should be specific insiders at the company or direct peers.\n"
+        )
+    else:
+        schema = '''
+{
+  "issue": "<market/industry-level question — do NOT name the reference company>",
+  "scenarios": [
+    {
+      "driver_id": "<market_dynamics | operational_model | competitive_movement | growth_scalability | risk_regulatory>",
+      "name": "<8-15 word MARKET-level headline — NO reference company name>",
+      "so_what": "<why this market truth matters for the client's decision>",
+      "hypothesis": "<falsifiable claim about the MARKET or INDUSTRY>",
+      "sub_hypotheses": [
+        {
+          "text": "<MECE market-level sub-hypothesis — NO company names>",
+          "experts": [
+            {
+              "name": "<specific role at reference company or industry peer>",
+              "evidence": "<what this insider can reveal about the market>",
+              "rationale": "<why someone inside this company is the right lens>"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}'''
+        anchoring_block = (
+            "SCOPE: MARKET-LEVEL — the learning objective asks about a market, industry, or segment.\n\n"
+            "Input priority order:\n"
+            f"  1. LEARNING OBJECTIVE (master anchor): \"{wants}\"\n"
+            f"  2. PROJECT NAME (scope): \"{proj}\"\n"
+            f"  3. SCREENING QUESTIONS (shape sub-hypotheses): \"{questions}\"\n"
+            f"  4. REFERENCE COMPANY (evidence layer only): \"{ref}\"\n\n"
+            f"STRICT RULES — the name \"{ref}\" is BANNED from:\n"
+            "  issue, scenario name, scenario hypothesis, sub_hypothesis text.\n"
+            f"\"{ref}\" may ONLY appear in expert name/evidence/rationale.\n\n"
+            "Phrase at the market level:\n"
+            f'  BAD:  "{ref}\'s BNPL default rates are 2-3x higher than Kakao Pay"\n'
+            '  GOOD: "Early-stage BNPL underwriting runs structurally looser than\n'
+            '         incumbent card issuers, producing 2-3x default rates across the\n'
+            '         fintech segment"\n'
+            f'  GOOD expert: "Former Credit Risk Lead at {ref}"\n'
+        )
+        if scope == 'ambiguous':
+            anchoring_block += (
+                '\nNOTE: scope was ambiguous — defaulting to market-level. Add this line '
+                'to the "issue" field: "(Scope inferred as market-level — confirm if '
+                'this should be company-specific.)"\n'
+            )
+
     return (
         "You are generating a CDD hypothesis tree for a consulting team. Output ONLY valid JSON, no markdown fences.\n\n"
-        f"Context:\n"
-        f"- Reference company: {ref}\n"
-        f"- Client wants to learn: {wants}\n"
-        f"- Screening / verify questions: {questions}\n\n"
-        f"Generate 3 specific CDD scenarios for these value driver types (in this priority order):\n{driver_list}\n\n"
+        f"Project: {proj}\n"
+        f"Learning objective: {wants}\n"
+        f"Screening questions: {questions}\n"
+        f"Reference company: {ref}\n\n"
+        + anchoring_block + "\n"
+        f"Generate 3 to 5 specific CDD scenarios from the value driver types below. Priority order:\n{driver_list}\n\n"
         "Rules:\n"
-        "- scenario name: specific 8-15 word headline naming REAL companies, competitors, market forces from the context above\n"
-        "- confirm_expert / kill_expert: name the specific company, segment, or market role — NOT generic descriptions\n"
-        "- exactly 4 sub_hypotheses per scenario\n"
-        "- issue: the central question for the highest-priority scenario, naming the real company\n\n"
+        "- exactly 4 sub_hypotheses per scenario, each with 3-4 experts\n"
+        "- expert names must be specific roles at specific companies\n"
+        "- sub-hypotheses must be MECE\n\n"
         "Output this exact JSON structure:" + schema
     )
+
+
+def generate_sub_sub(sub_hyp_text, hypothesis, reference_company, client_name, client_wants='', proj_name=''):
+    """Generate 2-3 sub-sub-hypotheses for a given sub-hypothesis via Claude."""
+    api_key = os.environ.get('ANTHROPIC_API_KEY', '')
+    if not _HAS_ANTHROPIC or not api_key:
+        return None
+    try:
+        print(f'\n⏳ Expanding sub-hypothesis (fast)...')
+        api_client = _anthropic.Anthropic(api_key=api_key)
+
+        scope = _detect_scope(reference_company, proj_name, client_wants)
+
+        if scope == 'company':
+            anchoring = (
+                "SCOPE: COMPANY-LEVEL — hypotheses are about the reference company.\n"
+                f"Sub-hypotheses MAY name \"{reference_company}\".\n"
+            )
+        else:
+            anchoring = (
+                "SCOPE: MARKET-LEVEL — hypotheses are about the market/industry.\n"
+                f"The name \"{reference_company}\" is BANNED from sub-hypothesis text.\n"
+                f"\"{reference_company}\" may ONLY appear in expert name/evidence/rationale.\n"
+                "Phrase at market level: \"BNPL underwriting across the fintech segment...\" "
+                f"NOT \"{reference_company}'s underwriting...\"\n"
+            )
+
+        prompt = (
+            "You are generating deeper sub-hypotheses for a CDD hypothesis tree. "
+            "Output ONLY a valid JSON array, no markdown fences.\n\n"
+            f"Reference company: {reference_company}\n"
+            f"Client: {client_name}\n"
+            f"Learning objective: {client_wants}\n"
+            f"Parent hypothesis: {hypothesis}\n"
+            f"Sub-hypothesis to expand: {sub_hyp_text}\n\n"
+            + anchoring + "\n"
+            "Generate 2-3 deeper sub-sub-hypotheses inheriting the same scope as above. "
+            "Each should have 3 experts (specific role at specific company) "
+            "who could verify or challenge the claim from inside the industry.\n\n"
+            "Output:\n"
+            "[\n"
+            '  {\n'
+            '    "text": "sub-sub-hypothesis (respecting the scope rule above)",\n'
+            '    "experts": [\n'
+            '      {"name": "specific role at company", "evidence": "what they reveal", "rationale": "why this insider matters"}\n'
+            "    ]\n"
+            "  }\n"
+            "]"
+        )
+        msg = api_client.messages.create(
+            model='claude-haiku-4-5-20251001',
+            max_tokens=2048,
+            messages=[{'role': 'user', 'content': prompt}],
+        )
+        raw = ''.join(block.text for block in msg.content if block.type == 'text').strip()
+        raw = re.sub(r'^```[a-z]*\n?', '', raw)
+        raw = re.sub(r'\n?```$', '', raw.strip())
+        parsed = json.loads(raw)
+        print(f'── Expanded into {len(parsed)} sub-sub-hypotheses ──')
+        return parsed
+    except Exception as e:
+        print(f'\n── SUB-SUB LLM ERROR: {e} ──\n')
+        return None
 
 
 def generate_specific_scenarios(form_data, ordered_drivers):
@@ -341,12 +640,11 @@ def generate_specific_scenarios(form_data, ordered_drivers):
     if not _HAS_ANTHROPIC or not api_key:
         return None
     try:
-        print('\n⏳ Calling Claude (web search enabled) — this takes ~30-60s...')
+        print('\n⏳ Calling Claude (Haiku) — generating scenarios...')
         client = _anthropic.Anthropic(api_key=api_key)
         msg = client.messages.create(
-            model='claude-sonnet-4-6',
+            model='claude-haiku-4-5-20251001',
             max_tokens=8192,
-            tools=[{'type': 'web_search_20250305', 'name': 'web_search', 'max_uses': 3}],
             messages=[{'role': 'user', 'content': _build_llm_prompt(form_data, ordered_drivers)}],
         )
         raw = ''.join(block.text for block in msg.content if block.type == 'text').strip()
@@ -388,8 +686,16 @@ def generate_result(form_data):
     if llm_data and llm_data.get('issue'):
         issue = llm_data['issue']
 
+    # Include drivers that have keyword signal or LLM content; always keep at least 3
+    active_drivers = []
+    for driver in ordered:
+        has_signal = scores.get(driver['keyword_group'], 0) > 0
+        has_llm = driver['id'] in llm_scenarios
+        if has_signal or has_llm or len(active_drivers) < 3:
+            active_drivers.append(driver)
+
     scenarios = []
-    for idx, driver in enumerate(ordered):
+    for idx, driver in enumerate(active_drivers):
         llm_s = llm_scenarios.get(driver['id'])
 
         name = llm_s['name'] if llm_s else driver['name']
@@ -398,20 +704,25 @@ def generate_result(form_data):
 
         # Build sub-hypotheses from LLM or fall back to template
         if llm_s and len(llm_s.get('sub_hypotheses', [])) >= 3:
-            sub_hypotheses = [
-                {
-                    'text': sh.get('text', ''),
-                    'confirm_evidence': sh.get('confirm_evidence', ''),
-                    'confirm_expert': sh.get('confirm_expert', ''),
-                    'confirm_expert_color': CONFIRM_EXPERT_COLORS[i % len(CONFIRM_EXPERT_COLORS)],
-                    'kill_evidence': sh.get('kill_evidence', ''),
-                    'kill_expert': sh.get('kill_expert', ''),
-                    'rationale': sh.get('rationale', ''),
-                }
-                for i, sh in enumerate(llm_s['sub_hypotheses'][:4])
-            ]
+            sub_hypotheses = []
+            for sh in llm_s['sub_hypotheses'][:4]:
+                experts = sh.get('experts', [])
+                if not experts and sh.get('confirm_expert'):
+                    experts = [
+                        {'name': sh['confirm_expert'], 'evidence': sh.get('confirm_evidence', ''), 'rationale': sh.get('rationale', '')},
+                        {'name': sh['kill_expert'], 'evidence': sh.get('kill_evidence', ''), 'rationale': ''},
+                    ]
+                sub_hypotheses.append({'text': sh.get('text', ''), 'experts': experts})
         else:
-            sub_hypotheses = driver['sub_hypotheses']
+            sub_hypotheses = []
+            for tsh in driver['sub_hypotheses']:
+                sub_hypotheses.append({
+                    'text': tsh['text'],
+                    'experts': [
+                        {'name': tsh['confirm_expert'], 'evidence': tsh['confirm_evidence'], 'rationale': tsh.get('rationale', '')},
+                        {'name': tsh['kill_expert'], 'evidence': tsh['kill_evidence'], 'rationale': ''},
+                    ],
+                })
 
         # LLM-generated content is MECE by construction; skip overlap check to avoid false positives
         if llm_s:

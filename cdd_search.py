@@ -4,8 +4,8 @@ Run:  python3 server.py
 Then open:  http://localhost:5050
 """
 
-from flask import Flask, request, render_template_string
-from tree_map import generate_result, _e
+from flask import Flask, request, render_template_string, jsonify
+from tree_map import generate_result, generate_sub_sub, _e
 import json, html
 
 app = Flask(__name__)
@@ -36,10 +36,24 @@ FORM_HTML = """<!DOCTYPE html>
     .hint{font-size:11px;color:#94A3B8;margin-top:4px}
     .btn-submit{width:100%;padding:12px;background:#0F172A;color:#F8FAFC;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:.02em;transition:background .15s;margin-top:4px}
     .btn-submit:hover{background:#1E293B}
+    .btn-submit:disabled{background:#64748B;cursor:not-allowed}
     .divider{border:none;border-top:1px solid #E2E8F0;margin:24px 0}
+    .loading-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(15,23,42,.85);z-index:999;flex-direction:column;align-items:center;justify-content:center;gap:20px}
+    .loading-overlay.active{display:flex}
+    .loading-spinner{width:48px;height:48px;border:4px solid #334155;border-top-color:#2563EB;border-radius:50%;animation:spin 1s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .loading-text{color:#E2E8F0;font-size:16px;font-weight:700}
+    .loading-sub{color:#94A3B8;font-size:12px;margin-top:-12px}
+    .loading-timer{color:#64748B;font-size:11px;font-family:monospace}
   </style>
 </head>
 <body>
+  <div class="loading-overlay" id="loading">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Generating Hypothesis Tree</div>
+    <div class="loading-sub">Building scenarios with Claude — this takes 20-40 seconds</div>
+    <div class="loading-timer" id="loading-timer">0s</div>
+  </div>
   <header>
     <span class="app-title">CDD Predictor</span>
     <span class="app-sub">GLG Korea · Commercial Due Diligence · Hypothesis Framework</span>
@@ -49,7 +63,7 @@ FORM_HTML = """<!DOCTYPE html>
       <div class="card-title">New CDD Project</div>
       <div class="card-sub">Fill in the engagement context — the model will generate a hypothesis tree ordered by keyword signal.</div>
       <hr class="divider">
-      <form method="POST" action="/generate">
+      <form method="POST" action="/generate" onsubmit="showLoading()">
         <div class="field">
           <label>Project Name</label>
           <input name="proj_name" placeholder="e.g. US Golf Club M&amp;A Assessment" required>
@@ -71,10 +85,22 @@ FORM_HTML = """<!DOCTYPE html>
           <textarea name="verify_questions" placeholder="e.g. Has the expert worked in club operations? Can they speak to membership dues and initiation fees?"></textarea>
           <div class="hint">Used to detect keyword signals and order scenarios.</div>
         </div>
-        <button class="btn-submit" type="submit">Generate Hypothesis Tree →</button>
+        <button class="btn-submit" type="submit" id="btn-submit">Generate Hypothesis Tree &rarr;</button>
       </form>
     </div>
   </main>
+  <script>
+    function showLoading(){
+      document.getElementById('loading').classList.add('active');
+      document.getElementById('btn-submit').disabled=true;
+      document.getElementById('btn-submit').textContent='Generating...';
+      var start=Date.now();
+      setInterval(function(){
+        var s=Math.floor((Date.now()-start)/1000);
+        document.getElementById('loading-timer').textContent=s+'s';
+      },1000);
+    }
+  </script>
 </body>
 </html>"""
 
@@ -99,11 +125,7 @@ header{background:#0F172A;padding:12px 32px;display:flex;align-items:center;just
 .issue-banner{display:flex;align-items:flex-start;gap:10px;background:#0F172A;border-radius:8px;padding:12px 16px;margin-bottom:20px}
 .issue-label{flex-shrink:0;background:#1E293B;color:#94A3B8;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;text-transform:uppercase;letter-spacing:.1em;margin-top:1px}
 .issue-text{color:#E2E8F0;font-size:13px;line-height:1.55}
-/* Tree */
-.tree-container{background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:20px;margin-bottom:24px;overflow:hidden}
-.tree-label{font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px}
-.hyp-node{cursor:pointer;transition:filter .15s}
-.hyp-node:hover{filter:brightness(1.15)}
+/* Tree — rendered dynamically by JS */
 /* Score bar */
 .score-bar-row{display:flex;gap:14px;margin-bottom:20px;flex-wrap:wrap}
 .score-pill{display:flex;align-items:center;gap:7px;background:#fff;border:1px solid #E2E8F0;border-radius:8px;padding:8px 12px}
@@ -117,14 +139,22 @@ header{background:#0F172A;padding:12px 32px;display:flex;align-items:center;just
 .export-csv-btn{padding:6px 14px;background:#0F172A;color:#94A3B8;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;transition:all .15s}
 .export-csv-btn:hover{background:#1E293B;color:#E2E8F0}
 .mece-gate-error{background:#FEF2F2;border:1px solid #FECACA;border-radius:6px;padding:8px 12px;font-size:12px;color:#DC2626;margin-bottom:10px}
-.scenario-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
-.scenario-card{background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:12px;transition:opacity .2s,box-shadow .2s;scroll-margin-top:20px}
+.scenario-grid{display:flex;gap:16px;overflow-x:auto;padding-bottom:12px;scroll-snap-type:x mandatory}
+.scenario-grid::-webkit-scrollbar{height:6px}
+.scenario-grid::-webkit-scrollbar-track{background:#F1F5F9;border-radius:3px}
+.scenario-grid::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:3px}
+.scenario-grid::-webkit-scrollbar-thumb:hover{background:#94A3B8}
+.scenario-card{background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:12px;transition:opacity .2s,box-shadow .2s;scroll-margin-top:20px;min-width:380px;max-width:420px;flex-shrink:0;scroll-snap-align:start}
 .scenario-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.08)}
 .scenario-card.highlighted{box-shadow:0 0 0 3px #2563EB55;animation:pulse .6s ease}
 @keyframes pulse{0%{box-shadow:0 0 0 0 #2563EB55}50%{box-shadow:0 0 0 6px #2563EB22}100%{box-shadow:0 0 0 3px #2563EB55}}
 .scenario-card.rejected{opacity:.45}
 .scenario-card.deleted{display:none}
-.so-what-block{display:flex;align-items:flex-start;gap:8px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:6px;padding:10px 12px}
+.so-what-toggle{padding:5px 10px;background:transparent;border:1px solid #E2E8F0;border-radius:5px;font-size:10px;font-weight:600;color:#94A3B8;cursor:pointer;transition:all .15s;align-self:flex-start}
+.so-what-toggle:hover{background:#F8FAFC;color:#64748B;border-color:#CBD5E1}
+.so-what-block{display:none;align-items:flex-start;gap:8px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:6px;padding:10px 12px;animation:fadeIn .2s ease}
+.so-what-block.visible{display:flex}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
 .so-what-label{flex-shrink:0;font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.1em;margin-top:2px}
 .so-what-text{font-size:13px;font-weight:700;color:#0F172A;line-height:1.4}
 .scenario-header{display:flex;flex-direction:column;gap:6px}
@@ -202,6 +232,71 @@ header{background:#0F172A;padding:12px 32px;display:flex;align-items:center;just
 .choice-kill{background:#FEF2F2;color:#DC2626;border:1px solid #FECACA}
 .choice-name{font-size:12px;color:#1E293B;font-weight:600}
 .drill-skip-note{font-size:11px;color:#94A3B8;font-style:italic;margin-top:2px}
+/* ── Custom hypothesis input ─────────────────────────────────── */
+.custom-hyp-section{background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:18px;margin-top:20px}
+.custom-hyp-title{font-size:13px;font-weight:700;color:#1E293B;margin-bottom:12px}
+.custom-hyp-row{display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.custom-hyp-input{flex:1;min-width:200px;border:1px solid #CBD5E1;border-radius:6px;padding:8px 10px;font-size:12px;font-family:inherit;background:#F8FAFC;color:#1E293B}
+.custom-hyp-input:focus{outline:none;border-color:#2563EB;box-shadow:0 0 0 3px #2563EB20;background:#fff}
+.custom-hyp-input::placeholder{color:#94A3B8}
+.btn-add-hyp{padding:8px 16px;background:#0F172A;color:#F8FAFC;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;transition:background .15s;white-space:nowrap}
+.btn-add-hyp:hover{background:#1E293B}
+/* ── Dynamic tree ─────────────────────────────────── */
+.tree-container{background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:20px;margin-bottom:24px;overflow-x:auto}
+.tree-label{font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px}
+/* ── Exploration panel (full-width drill-down) ────── */
+.explore-panel{display:none;background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:24px 28px;margin-top:16px;overflow:auto}
+.explore-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid #E2E8F0}
+.explore-title{font-size:15px;font-weight:700;color:#0F172A}
+.explore-subtitle{font-size:11px;color:#94A3B8;margin-top:2px}
+.btn-close-explore{padding:5px 12px;background:transparent;border:1px solid #E2E8F0;border-radius:5px;font-size:11px;font-weight:600;color:#64748B;cursor:pointer;transition:all .15s}
+.btn-close-explore:hover{background:#F1F5F9;border-color:#94A3B8}
+.explore-tree{display:flex;flex-direction:row;gap:16px;overflow-x:auto;padding-bottom:16px;scroll-snap-type:x proximity}
+.explore-tree::-webkit-scrollbar{height:6px}
+.explore-tree::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:3px}
+.explore-tree>.tree-node{scroll-snap-align:start}
+/* Tree nodes */
+.tree-node{position:relative;padding:14px 16px;margin:6px 0;border-left:4px solid #CBD5E1;border-radius:0 8px 8px 0;background:#FAFBFC;transition:all .2s;min-width:340px;max-width:400px;flex-shrink:0}
+.tree-node:hover{background:#F1F5F9}
+.tree-node.remained{border-left-color:#059669;background:#F0FDF9}
+.tree-node.deleted{opacity:.4;border-left-color:#E2E8F0;pointer-events:none}
+.tree-node-header{margin-bottom:6px}
+.tree-node-label{display:inline-block;font-size:8px;font-weight:700;padding:2px 6px;border-radius:3px;text-transform:uppercase;letter-spacing:.08em;background:#F0FDF4;color:#166534;margin-bottom:4px}
+.tree-node-label-deep{background:#EFF6FF;color:#1D4ED8}
+.tree-node-text{font-size:13px;font-weight:600;color:#1E293B;line-height:1.5;margin:0}
+.tree-node-text-deleted{font-size:13px;color:#94A3B8;text-decoration:line-through;line-height:1.5}
+.tree-node-experts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0 6px}
+.expert-mini{display:flex;flex-direction:column;gap:3px;padding:8px 10px;border:1px solid #E2E8F0;border-radius:6px;background:#fff}
+.expert-mini-kill{border-color:#FECACA;background:#FFFBFB}
+.expert-mini-label{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#64748B}
+.expert-mini-kill .expert-mini-label{color:#DC2626}
+.expert-mini-name{font-size:11px;font-weight:700;color:#1E293B}
+.expert-mini-evidence{font-size:10px;color:#64748B;line-height:1.4;margin-top:2px}
+.tree-node-actions{display:flex;gap:8px;margin-top:10px}
+.btn-remain{padding:7px 14px;border:1px solid #BBF7D0;background:#F0FDF4;color:#166534;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
+.btn-remain:hover{background:#DCFCE7}
+.btn-del-sub{padding:7px 14px;border:1px solid #FECACA;background:#FEF2F2;color:#DC2626;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
+.btn-del-sub:hover{background:#FEE2E2}
+.tree-node-children{margin-top:10px;display:flex;flex-direction:row;gap:12px;overflow-x:auto;padding:10px 0 8px 0;border-top:2px solid #93C5FD}
+.tree-node-children .tree-node{border-left:4px solid #3B82F6;min-width:300px;max-width:360px;background:#EFF6FF}
+.tree-node-children .tree-node.remained{border-left-color:#059669;background:#F0FDF9}
+.tree-node-children .tree-node-children{border-top-color:#7C3AED}
+.tree-node-children .tree-node-children .tree-node{border-left-color:#7C3AED;background:#F5F3FF;min-width:280px}
+.tree-node-loading{font-size:12px;color:#2563EB;font-weight:600;padding:12px 16px;margin:6px 0 6px 24px;background:#EFF6FF;border-radius:6px;border:1px dashed #93C5FD;animation:loadPulse 1.5s ease infinite}
+@keyframes loadPulse{0%,100%{opacity:1}50%{opacity:.5}}
+.tree-depth-badge{display:inline-block;font-size:8px;font-weight:700;color:#94A3B8;background:#F1F5F9;padding:1px 5px;border-radius:3px;margin-left:6px}
+/* Expert chips with confirm/delete */
+.expert-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.expert-chip-card{display:flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid #E2E8F0;border-radius:6px;background:#fff;font-size:11px;transition:all .2s}
+.expert-chip-card.confirmed{border-color:#059669;background:#F0FDF9}
+.expert-chip-card.deleted{display:none}
+.expert-chip-name{font-weight:700;color:#1E293B}
+.expert-chip-evidence{font-size:10px;color:#64748B;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.btn-chip-confirm{padding:2px 6px;border:1px solid #BBF7D0;background:#F0FDF4;color:#166534;border-radius:3px;font-size:9px;font-weight:700;cursor:pointer;transition:all .15s}
+.btn-chip-confirm:hover{background:#DCFCE7}
+.btn-chip-delete{padding:2px 6px;border:1px solid #FECACA;background:#FEF2F2;color:#DC2626;border-radius:3px;font-size:9px;font-weight:700;cursor:pointer;transition:all .15s}
+.btn-chip-delete:hover{background:#FEE2E2}
+.confirmed-badge{font-size:8px;font-weight:700;color:#059669;background:#F0FDF4;border:1px solid #BBF7D0;padding:1px 5px;border-radius:3px}
 """
 
 RESULT_JS = """
@@ -211,10 +306,157 @@ window.CDD_DATA = {{ cdd_data_json }};
 const SCENARIOS = {};
 for (const s of window.CDD_DATA.scenarios) { SCENARIOS[s.template_id] = s; }
 const drillState = {};
+let customCounter = 0;
 
 function loadLog(){try{return JSON.parse(localStorage.getItem(LOG_KEY)||'{}');}catch{return{};}}
 function saveLog(l){localStorage.setItem(LOG_KEY,JSON.stringify(l));}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
+/* ── Dynamic SVG tree ──────────────────────────────────────── */
+function buildTree(){
+  const container=document.getElementById('tree-svg');
+  if(!container)return;
+  const scenarios=window.CDD_DATA.scenarios.filter(s=>{
+    const card=document.getElementById('card-'+s.template_id);
+    return !card||!card.classList.contains('deleted');
+  });
+  const count=scenarios.length;
+  if(count===0){container.innerHTML='';return;}
+
+  const HYP_W=260,HYP_H=56,PAD=60,GAP=20;
+  const SVG_W=Math.max(900,PAD*2+count*HYP_W+(count-1)*GAP);
+  const ISSUE_W=Math.min(SVG_W-100,800),ISSUE_H=50;
+  const ROOT_CX=SVG_W/2;
+  const ISSUE_Y=16;
+  const ELBOW_Y=ISSUE_Y+ISSUE_H+28;
+  const HYP_Y=ELBOW_Y+20;
+
+  const centers=[];
+  const totalW=count*HYP_W+(count-1)*GAP;
+  const startX=(SVG_W-totalW)/2+HYP_W/2;
+  for(let i=0;i<count;i++) centers.push(startX+i*(HYP_W+GAP));
+
+  let parts=[];
+  const issue=window.CDD_DATA.issue||'';
+  const issueX=ROOT_CX-ISSUE_W/2;
+  const issueShort=issue.length>100?issue.slice(0,97)+'…':issue;
+  parts.push('<rect x="'+issueX+'" y="'+ISSUE_Y+'" width="'+ISSUE_W+'" height="'+ISSUE_H+'" rx="10" fill="#0F172A"/>');
+  parts.push('<text x="'+ROOT_CX+'" y="'+(ISSUE_Y+16)+'" text-anchor="middle" fill="#475569" font-size="9" font-weight="700" letter-spacing="0.1em">ISSUE</text>');
+  parts.push('<text x="'+ROOT_CX+'" y="'+(ISSUE_Y+34)+'" text-anchor="middle" fill="#E2E8F0" font-size="11">'+esc(issueShort)+'</text>');
+
+  const log=loadLog();
+
+  function collectBranches(nodes,depth,parentTid){
+    let items=[];
+    for(let i=0;i<nodes.length;i++){
+      const n=nodes[i];
+      if(n.status==='remained'){
+        const short=n.text.length>24?n.text.slice(0,21)+'…':n.text;
+        const experts=(n.confirmedExperts||[]).map(function(ce){return ce.length>22?ce.slice(0,19)+'…':ce;});
+        items.push({label:short,experts:experts,depth:depth,tid:parentTid,subIdx:i});
+        if(n.children&&n.children.length>0){
+          items=items.concat(collectBranches(n.children,depth+1,parentTid));
+        }
+      }
+    }
+    return items;
+  }
+
+  let allBranches=[];
+  for(let i=0;i<scenarios.length;i++){
+    const s=scenarios[i];
+    const tid=s.template_id;
+    let branches=[];
+    const ms=mainExpertState[tid];
+    if(ms){
+      const mainExperts=ms.filter(function(e){return e.status==='confirmed';}).map(function(e){return e.name.length>22?e.name.slice(0,19)+'…':e.name;});
+      if(mainExperts.length>0){
+        branches.push({label:'Main Hypothesis',experts:mainExperts,depth:0,tid:tid,subIdx:-1});
+      }
+    }
+    const st=drillState[tid];
+    if(st&&st.nodes) branches=branches.concat(collectBranches(st.nodes,0,tid));
+    allBranches.push(branches);
+  }
+
+  const SUB_Y=HYP_Y+HYP_H+24;
+  const SUB_W=220,SUB_GAP=6;
+  var maxColH=0;
+  for(var bi=0;bi<allBranches.length;bi++){
+    var colH=0;
+    for(var bj=0;bj<allBranches[bi].length;bj++){
+      var ne=allBranches[bi][bj].experts?allBranches[bi][bj].experts.length:0;
+      colH+=32+(ne>0?(4+ne*14):0)+SUB_GAP;
+    }
+    maxColH=Math.max(maxColH,colH);
+  }
+  const SVG_H=maxColH>0?SUB_Y+maxColH+20:HYP_Y+HYP_H+50;
+
+  for(let i=0;i<scenarios.length;i++){
+    const s=scenarios[i];
+    const cx=centers[i];
+    const rx=cx-HYP_W/2;
+    const color=s.color||'#64748B';
+    const tid=s.template_id;
+    const isRejected=Object.prototype.hasOwnProperty.call(log,tid);
+    const opacity=isRejected?'0.35':'1';
+    const nameShort=s.name.length>28?s.name.slice(0,25)+'…':s.name;
+
+    parts.push('<path d="M '+ROOT_CX+' '+(ISSUE_Y+ISSUE_H)+' L '+ROOT_CX+' '+ELBOW_Y+' L '+cx+' '+ELBOW_Y+' L '+cx+' '+HYP_Y+'" fill="none" stroke="#CBD5E1" stroke-width="1.5"/>');
+    parts.push('<rect x="'+rx+'" y="'+HYP_Y+'" width="'+HYP_W+'" height="'+HYP_H+'" rx="10" fill="'+color+'" opacity="'+opacity+'" style="cursor:pointer" onclick="highlightCard(\\''+tid+'\\')"/>');
+    parts.push('<text x="'+cx+'" y="'+(HYP_Y+16)+'" text-anchor="middle" fill="rgba(255,255,255,.65)" font-size="9" font-weight="700" letter-spacing="0.09em" pointer-events="none">SCENARIO '+s.id+'</text>');
+    parts.push('<text x="'+cx+'" y="'+(HYP_Y+36)+'" text-anchor="middle" fill="white" font-size="12" font-weight="700" pointer-events="none">'+esc(nameShort)+'</text>');
+
+    var branches=allBranches[i];
+    if(branches.length>0){
+      var curY=SUB_Y;
+      var armX=cx-SUB_W/2-10;
+      parts.push('<path d="M '+cx+' '+(HYP_Y+HYP_H)+' L '+cx+' '+(SUB_Y-8)+' L '+armX+' '+(SUB_Y-8)+'" fill="none" stroke="#94A3B8" stroke-width="1.5"/>');
+      for(let j=0;j<branches.length;j++){
+        const b=branches[j];
+        const numExperts=b.experts?b.experts.length:0;
+        const nodeH=32+(numExperts>0?(4+numExperts*14):0);
+        const indent=b.depth*16;
+        const sx=armX+6+indent;
+        const bw=SUB_W-indent;
+        var midY=curY+nodeH/2;
+        parts.push('<path d="M '+armX+' '+(SUB_Y-8)+' L '+armX+' '+midY+' L '+sx+' '+midY+'" fill="none" stroke="#94A3B8" stroke-width="1.2"/>');
+        var depthColors=['#64748B','#3B82F6','#7C3AED'];
+        var dc=depthColors[Math.min(b.depth,2)];
+        parts.push('<rect x="'+sx+'" y="'+curY+'" width="'+bw+'" height="'+nodeH+'" rx="6" fill="#fff" stroke="'+dc+'" stroke-width="1.5" style="cursor:pointer" onclick="scrollToExplore(\\''+b.tid+'\\')"/>');
+        var depthLabels=['SUB-HYPOTHESIS','DEPTH 2','DEPTH 3'];
+        parts.push('<text x="'+(sx+8)+'" y="'+(curY+12)+'" fill="'+dc+'" font-size="7" font-weight="700" letter-spacing="0.06em">'+depthLabels[Math.min(b.depth,2)]+'</text>');
+        parts.push('<text x="'+(sx+8)+'" y="'+(curY+25)+'" fill="#1E293B" font-size="9" font-weight="'+(b.depth>0?'700':'600')+'">'+esc(b.label)+'</text>');
+        if(numExperts>0){
+          for(let ei=0;ei<b.experts.length;ei++){
+            var ey=curY+34+ei*14;
+            parts.push('<circle cx="'+(sx+10)+'" cy="'+(ey+4)+'" r="3" fill="#059669"/>');
+            parts.push('<text x="'+(sx+16)+'" y="'+(ey+7)+'" fill="#059669" font-size="8" font-weight="700">'+esc(b.experts[ei])+'</text>');
+          }
+        }
+        curY+=nodeH+SUB_GAP;
+      }
+    }
+  }
+
+  container.innerHTML='<svg viewBox="0 0 '+SVG_W+' '+SVG_H+'" xmlns="http://www.w3.org/2000/svg" style="width:100%;min-width:'+SVG_W+'px;display:block">'+parts.join('')+'</svg>';
+}
+
+function scrollToExplore(tid){
+  var panel=document.getElementById('explore-'+tid);
+  if(panel&&panel.style.display==='block'){
+    panel.scrollIntoView({behavior:'smooth',block:'center'});
+    return;
+  }
+  var card=document.getElementById('card-'+tid);
+  if(card){
+    card.scrollIntoView({behavior:'smooth',block:'center'});
+    var btn=document.getElementById('btn-confirm-'+tid);
+    if(btn&&btn.style.display!=='none') btn.click();
+  }
+}
+
+/* ── Card interactions ──────────────────────────────────────── */
 function highlightCard(tid){
   const card=document.getElementById('card-'+tid);
   if(!card)return;
@@ -236,13 +478,21 @@ function rejectScenario(tid,btn){
   btn.textContent='Rejected ✓';
   btn.disabled=true;
   const log=loadLog();log[tid]=new Date().toISOString();saveLog(log);
-  document.querySelectorAll('.hyp-node[data-id="'+tid+'"]').forEach(n=>n.setAttribute('opacity','0.35'));
+  buildTree();
 }
 
 function deleteScenario(tid){
-  if(!confirm('Delete this scenario? No record will be saved.'))return;
+  if(!confirm('Delete this scenario?'))return;
   document.getElementById('card-'+tid).classList.add('deleted');
-  document.querySelectorAll('.hyp-node[data-id="'+tid+'"]').forEach(n=>{n.style.opacity='0.08';});
+  buildTree();
+}
+
+function toggleSoWhat(tid){
+  const block=document.getElementById('sowhat-'+tid);
+  const btn=document.getElementById('btn-sowhat-'+tid);
+  if(!block)return;
+  block.classList.toggle('visible');
+  btn.textContent=block.classList.contains('visible')?'Hide logic':'Why this hypothesis?';
 }
 
 function exportCSV(){
@@ -263,113 +513,337 @@ function exportCSV(){
   URL.revokeObjectURL(url);
 }
 
-function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-
+/* ── Exploration tree (drill-down) ─────────────────────────── */
 function confirmHypothesis(tid){
   const btn=document.getElementById('btn-confirm-'+tid);
   if(btn)btn.style.display='none';
-  const zone=document.getElementById('drill-'+tid);
-  if(zone)zone.style.display='flex';
-  drillState[tid]={subIdx:0,phase:'sub',choices:[]};
-  renderDrillZone(tid);
+  const s=SCENARIOS[tid];
+  drillState[tid]={
+    active:true,
+    nodes:s.sub_hypotheses.map(function(sh){return{
+      text:sh.text,
+      experts:(sh.experts||[]).map(function(e){return{name:e.name,evidence:e.evidence||'',rationale:e.rationale||'',status:'pending'};}),
+      confirmedExperts:[],
+      status:'pending',children:[],loading:false
+    };})
+  };
+  renderExploration(tid);
 }
 
-function renderDrillZone(tid){
-  const st=drillState[tid];
+function closeExploration(tid){
+  const panel=document.getElementById('explore-'+tid);
+  if(panel)panel.style.display='none';
+  const btn=document.getElementById('btn-confirm-'+tid);
+  if(btn)btn.style.display='';
+}
+
+function renderExploration(tid,doScroll){
+  const panel=document.getElementById('explore-'+tid);
+  if(!panel)return;
+  var wasHidden=panel.style.display!=='block';
+  panel.style.display='block';
   const s=SCENARIOS[tid];
-  const zone=document.getElementById('drill-'+tid);
-  if(!zone||!st)return;
-  const n=st.subIdx+1;
-  const total=s.sub_hypotheses.length;
+  const st=drillState[tid];
+  let html='<div class="explore-header"><div><div class="explore-title">'+esc(s.name)+'</div>'+
+    '<div class="explore-subtitle">Click Remain to dig deeper into any branch — the model will generate sub-sub-hypotheses with experts</div></div>'+
+    '<button class="btn-close-explore" onclick="closeExploration(\\''+tid+'\\')">Close</button></div>';
+  html+='<div class="explore-tree">'+renderNodeTree(tid,st.nodes,[],0)+'</div>';
+  panel.innerHTML=html;
+  if(wasHidden||doScroll) panel.scrollIntoView({behavior:'smooth',block:'nearest'});
+  buildTree();
+}
 
-  if(st.phase==='sub'){
-    const sh=s.sub_hypotheses[st.subIdx];
-    zone.innerHTML=`
-<div class="drill-progress">Sub-hypothesis ${n} of ${total}</div>
-<div class="sub-h-reveal">
-  <div class="sh-header">
-    <div class="sh-index">${n}</div>
-    <div class="sh-content">
-      <span class="node-label nl-sub">Sub-hypothesis</span>
-      <p class="sh-text">${esc(sh.text)}</p>
-    </div>
-  </div>
-  <div class="sub-h-actions">
-    <button class="btn-remain" onclick="remainSub('${tid}')">Remain</button>
-    <button class="btn-del-sub" onclick="deleteSub('${tid}')">Delete</button>
-  </div>
-</div>`;
+function renderNodeTree(tid,nodes,path,depth){
+  let html='';
+  for(let i=0;i<nodes.length;i++){
+    const node=nodes[i];
+    const curPath=path.concat(i);
+    const pathStr=JSON.stringify(curPath);
+    const cls='tree-node'+(node.status==='remained'?' remained':'')+(node.status==='deleted'?' deleted':'');
+    const depthColors=['#059669','#3B82F6','#7C3AED'];
+    const depthColor=depthColors[Math.min(depth,2)];
+    const depthNames=['Sub-hypothesis','Depth 2','Depth 3'];
+    const depthName=depthNames[Math.min(depth,2)];
+    const textSize=depth===0?'13px':depth===1?'14px':'15px';
+    const textWeight=depth===0?'600':'700';
 
-  }else if(st.phase==='expert'){
-    const sh=s.sub_hypotheses[st.subIdx];
-    const cec=sh.confirm_expert_color||'#2563EB';
-    const why=sh.rationale?`<div class="expert-card-why"><span class="why-label">WHY&nbsp;</span>${esc(sh.rationale)}</div>`:'';
-    zone.innerHTML=`
-<div class="drill-progress">Sub-hypothesis ${n} of ${total} · Choose expert</div>
-<div class="sub-h-reveal">
-  <div class="sh-header">
-    <div class="sh-index">${n}</div>
-    <div class="sh-content">
-      <span class="node-label nl-sub">Sub-hypothesis</span>
-      <p class="sh-text">${esc(sh.text)}</p>
-    </div>
-  </div>
-</div>
-<div class="expert-choice-row">
-  <div class="expert-card expert-card-confirm" style="border-color:${cec}55" onclick="chooseExpert('${tid}','confirm')">
-    <span class="expert-card-label" style="background:${cec}18;color:${cec};border:1px solid ${cec}44">Confirm Expert</span>
-    <div class="expert-card-title">${esc(sh.confirm_expert)}</div>
-    <div class="expert-card-evidence">${esc(sh.confirm_evidence)}</div>
-    ${why}
-    <button class="btn-choose-expert" style="background:${cec}">Choose Confirm Expert</button>
-  </div>
-  <div class="expert-card expert-card-kill" onclick="chooseExpert('${tid}','kill')">
-    <span class="expert-card-label kill-label">Kill Expert</span>
-    <div class="expert-card-title">${esc(sh.kill_expert)}</div>
-    <div class="expert-card-evidence">${esc(sh.kill_evidence)}</div>
-    <button class="btn-choose-expert btn-kill-expert">Choose Kill Expert</button>
-  </div>
-</div>`;
-
-  }else if(st.phase==='done'){
-    let rows='';
-    for(const c of st.choices){
-      const sh=s.sub_hypotheses[c.subIdx];
-      const label=c.choice==='confirm'?sh.confirm_expert:sh.kill_expert;
-      const cls=c.choice==='confirm'?'choice-confirm':'choice-kill';
-      const lbl=c.choice==='confirm'?'CONFIRM':'KILL';
-      rows+=`<div class="choice-row"><span class="choice-idx">${c.subIdx+1}</span><span class="choice-type ${cls}">${lbl}</span><span class="choice-name">${esc(label)}</span></div>`;
+    html+='<div class="'+cls+'">';
+    html+='<div class="tree-node-header">';
+    html+='<span style="font-size:9px;font-weight:800;color:'+depthColor+';text-transform:uppercase;letter-spacing:.08em;padding:2px 6px;background:'+depthColor+'12;border-radius:3px;border:1px solid '+depthColor+'33">'+depthName+'</span>';
+    if(node.status==='deleted'){
+      html+='<p class="tree-node-text-deleted">'+esc(node.text)+'</p>';
+    }else{
+      html+='<p style="font-size:'+textSize+';font-weight:'+textWeight+';color:#1E293B;line-height:1.5;margin:4px 0 0">'+esc(node.text)+'</p>';
     }
-    const skipped=total-st.choices.length;
-    const skipNote=skipped>0?`<div class="drill-skip-note">${skipped} sub-hypothesis${skipped>1?'es':''} skipped</div>`:'';
-    zone.innerHTML=`
-<div class="drill-done">
-  <div class="drill-done-title">Expert selection complete</div>
-  ${rows}${skipNote}
-</div>`;
+    html+='</div>';
+
+    if(node.status!=='deleted'&&node.experts&&node.experts.length>0){
+      html+='<div class="expert-chips">';
+      for(let ei=0;ei<node.experts.length;ei++){
+        const ex=node.experts[ei];
+        if(ex.status==='deleted')continue;
+        const cls='expert-chip-card'+(ex.status==='confirmed'?' confirmed':'');
+        html+='<div class="'+cls+'" title="'+esc(ex.evidence)+'">';
+        html+='<span class="expert-chip-name">'+esc(ex.name)+'</span>';
+        if(ex.status==='pending'){
+          html+='<button class="btn-chip-confirm" onclick="nodeExpertAction(\\''+tid+'\\','+pathStr+','+ei+',\\'confirm\\')">Confirm</button>';
+          html+='<button class="btn-chip-delete" onclick="nodeExpertAction(\\''+tid+'\\','+pathStr+','+ei+',\\'delete\\')">Delete</button>';
+        }else{
+          html+='<span class="confirmed-badge">Confirmed</span>';
+        }
+        html+='</div>';
+      }
+      html+='</div>';
+    }
+
+    if(node.status==='pending'){
+      html+='<div class="tree-node-actions">'+
+        '<button class="btn-remain" onclick="remainNode(\\''+tid+'\\','+pathStr+')">Remain — Dig Deeper ▸</button>'+
+        '<button class="btn-del-sub" onclick="deleteNode(\\''+tid+'\\','+pathStr+')">Delete</button></div>';
+    }
+
+    if(node.loading){
+      html+='<div class="tree-node-loading">Generating deeper hypotheses with expert recommendations...</div>';
+    }
+
+    if(node.children&&node.children.length>0){
+      html+='<div class="tree-node-children">'+renderNodeTree(tid,node.children,curPath,depth+1)+'</div>';
+    }
+    html+='</div>';
+  }
+  return html;
+}
+
+function getNodeByPath(tid,path){
+  let nodes=drillState[tid].nodes;
+  let node=null;
+  for(let p=0;p<path.length;p++){
+    node=nodes[path[p]];
+    if(p<path.length-1)nodes=node.children;
+  }
+  return node;
+}
+
+function remainNode(tid,path){
+  const node=getNodeByPath(tid,path);
+  node.status='remained';
+  node.loading=true;
+  renderExploration(tid);
+
+  const s=SCENARIOS[tid];
+  fetch('/api/expand',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      sub_hypothesis:node.text,
+      hypothesis:s.hypothesis||s.name,
+      reference_company:window.CDD_DATA.context.reference_company,
+      client:window.CDD_DATA.context.client,
+      client_wants:window.CDD_DATA.context.client_wants,
+      proj_name:window.CDD_DATA.context.proj_name
+    })
+  })
+  .then(function(r){return r.json();})
+  .then(function(data){
+    node.loading=false;
+    node.children=(data||[]).map(function(sh){
+      var experts=(sh.experts||[]).map(function(e){return{name:e.name||'',evidence:e.evidence||'',rationale:e.rationale||'',status:'pending'};});
+      if(!experts.length&&sh.confirm_expert){
+        experts=[{name:sh.confirm_expert,evidence:sh.confirm_evidence||'',rationale:'',status:'pending'},{name:sh.kill_expert||'',evidence:sh.kill_evidence||'',rationale:'',status:'pending'}];
+      }
+      return{text:sh.text||'',experts:experts,confirmedExperts:[],status:'pending',children:[],loading:false};
+    });
+    renderExploration(tid);
+  })
+  .catch(function(){
+    node.loading=false;
+    renderExploration(tid);
+  });
+}
+
+function deleteNode(tid,path){
+  const node=getNodeByPath(tid,path);
+  node.status='deleted';
+  renderExploration(tid);
+}
+
+function nodeExpertAction(tid,path,expertIdx,action){
+  const node=getNodeByPath(tid,path);
+  node.experts[expertIdx].status=action==='confirm'?'confirmed':'deleted';
+  node.confirmedExperts=node.experts.filter(function(e){return e.status==='confirmed';}).map(function(e){return e.name;});
+  renderExploration(tid);
+  renderChosenExperts();
+}
+
+/* ── Main hypothesis expert selection ──────────────────────── */
+const mainExpertState={};
+
+function initMainExperts(tid){
+  const s=SCENARIOS[tid];
+  if(!s||!s.sub_hypotheses||!s.sub_hypotheses.length)return;
+  const experts=s.sub_hypotheses[0].experts||[];
+  if(!mainExpertState[tid]){
+    mainExpertState[tid]=experts.map(function(e){return{name:e.name,evidence:e.evidence||'',status:'pending'};});
   }
 }
 
-function remainSub(tid){drillState[tid].phase='expert';renderDrillZone(tid);}
-
-function deleteSub(tid){
-  const st=drillState[tid];
-  const total=SCENARIOS[tid].sub_hypotheses.length;
-  st.subIdx++;
-  st.phase=st.subIdx>=total?'done':'sub';
-  renderDrillZone(tid);
+function renderMainExpert(tid){
+  const zone=document.getElementById('main-expert-'+tid);
+  if(!zone)return;
+  initMainExperts(tid);
+  const state=mainExpertState[tid];
+  if(!state||!state.length)return;
+  let html='<div class="expert-chips">';
+  for(let i=0;i<state.length;i++){
+    const e=state[i];
+    if(e.status==='deleted')continue;
+    const cls='expert-chip-card'+(e.status==='confirmed'?' confirmed':'');
+    html+='<div class="'+cls+'">';
+    html+='<span class="expert-chip-name">'+esc(e.name)+'</span>';
+    if(e.status==='pending'){
+      html+='<button class="btn-chip-confirm" onclick="mainExpertAction(\\''+tid+'\\','+i+',\\'confirm\\')">Confirm</button>';
+      html+='<button class="btn-chip-delete" onclick="mainExpertAction(\\''+tid+'\\','+i+',\\'delete\\')">Delete</button>';
+    }else{
+      html+='<span class="confirmed-badge">Confirmed</span>';
+    }
+    html+='</div>';
+  }
+  html+='</div>';
+  zone.innerHTML=html;
+  renderChosenExperts();
 }
 
-function chooseExpert(tid,choice){
-  const st=drillState[tid];
-  st.choices.push({subIdx:st.subIdx,choice:choice});
-  const total=SCENARIOS[tid].sub_hypotheses.length;
-  st.subIdx++;
-  st.phase=st.subIdx>=total?'done':'sub';
-  renderDrillZone(tid);
+function mainExpertAction(tid,idx,action){
+  mainExpertState[tid][idx].status=action==='confirm'?'confirmed':'deleted';
+  renderMainExpert(tid);
+  buildTree();
 }
 
+function renderChosenExperts(){
+  const container=document.getElementById('chosen-experts-list');
+  if(!container)return;
+  let items=[];
+  for(const s of window.CDD_DATA.scenarios){
+    const tid=s.template_id;
+    const ms=mainExpertState[tid];
+    if(ms){
+      for(const e of ms){
+        if(e.status==='confirmed')items.push({scenario:s.name,expert:e.name});
+      }
+    }
+    const st=drillState[tid];
+    if(st&&st.nodes){
+      (function collect(nodes,scenarioName){
+        for(const n of nodes){
+          if(n.confirmedExperts){
+            for(const ce of n.confirmedExperts) items.push({scenario:scenarioName,expert:ce});
+          }
+          if(n.children)collect(n.children,scenarioName);
+        }
+      })(st.nodes,s.name);
+    }
+  }
+  if(items.length===0){
+    container.innerHTML='<span style="font-size:12px;color:#94A3B8;font-style:italic">No experts selected yet</span>';
+    return;
+  }
+  let html='';
+  for(const it of items){
+    html+='<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#fff;border:1px solid #BBF7D0;border-radius:6px">'+
+      '<span style="font-size:8px;font-weight:700;padding:2px 6px;border-radius:3px;color:#059669;background:#F0FDF4;border:1px solid #BBF7D0">CONFIRMED</span>'+
+      '<span style="font-size:12px;font-weight:700;color:#0F172A">'+esc(it.expert)+'</span>'+
+      '<span style="font-size:10px;color:#94A3B8;margin-left:auto">'+esc(it.scenario)+'</span></div>';
+  }
+  container.innerHTML=html;
+}
+
+/* ── Custom hypothesis ──────────────────────────────────────── */
+function addCustomHypothesis(){
+  const nameEl=document.getElementById('custom-hyp-name');
+  const textEl=document.getElementById('custom-hyp-text');
+  const name=nameEl.value.trim();
+  const text=textEl.value.trim();
+  if(!name){alert('Please enter a scenario name.');return;}
+  if(!text){alert('Please enter a hypothesis.');return;}
+
+  customCounter++;
+  const tid='custom_'+customCounter;
+  const newScenario={
+    template_id:tid,id:window.CDD_DATA.scenarios.length+1,
+    name:name,color:'#475569',value_driver:'custom',
+    hypothesis:text,so_what:'User-defined hypothesis',
+    sub_hypotheses:[],confirm_expert:'',kill_expert:''
+  };
+  window.CDD_DATA.scenarios.push(newScenario);
+  SCENARIOS[tid]=newScenario;
+
+  const grid=document.querySelector('.scenario-grid');
+  const card=document.createElement('div');
+  card.className='scenario-card';
+  card.id='card-'+tid;
+  card.setAttribute('data-template-id',tid);
+  card.innerHTML=
+'<div class="scenario-header"><div class="scenario-top-row">'+
+'<span class="scenario-badge" style="background:#475569">&nbsp;Custom&nbsp;</span>'+
+'<span class="rejected-stamp" id="stamp-'+tid+'" style="display:none"></span></div>'+
+'<p class="scenario-title">'+esc(name)+'</p>'+
+'<div class="hyp-block"><span class="node-label nl-hyp">Hypothesis</span>'+
+'<p class="hyp-text" id="hyp-'+tid+'">'+esc(text)+'</p></div>'+
+'<div class="main-expert-zone" id="main-expert-'+tid+'"></div></div>'+
+'<button class="drill-confirm-btn" id="btn-confirm-'+tid+'" onclick="confirmHypothesis(\\''+tid+'\\')">Explore & Expand ▸</button>'+
+'<div class="scenario-actions">'+
+'<button class="btn-reject" id="btn-reject-'+tid+'" onclick="rejectScenario(\\''+tid+'\\',this)">Reject</button>'+
+'<button class="btn-delete-red" onclick="deleteScenario(\\''+tid+'\\')">Delete</button></div>';
+  grid.appendChild(card);
+
+  var exploreDiv=document.createElement('div');
+  exploreDiv.className='explore-panel';
+  exploreDiv.id='explore-'+tid;
+  grid.parentNode.insertBefore(exploreDiv,grid.nextSibling);
+
+  card.innerHTML+='<div class="tree-node-loading" id="custom-loading-'+tid+'">Generating sub-hypotheses and experts...</div>';
+  nameEl.value='';textEl.value='';
+  buildTree();
+  card.scrollIntoView({behavior:'smooth',block:'center'});
+
+  fetch('/api/expand',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      sub_hypothesis:text,
+      hypothesis:name,
+      reference_company:window.CDD_DATA.context.reference_company,
+      client:window.CDD_DATA.context.client,
+      client_wants:window.CDD_DATA.context.client_wants,
+      proj_name:window.CDD_DATA.context.proj_name
+    })
+  })
+  .then(function(r){return r.json();})
+  .then(function(data){
+    var loadEl=document.getElementById('custom-loading-'+tid);
+    if(loadEl)loadEl.remove();
+    var subs=(data||[]).map(function(sh){
+      var experts=(sh.experts||[]).map(function(e){return{name:e.name||'',evidence:e.evidence||'',rationale:e.rationale||''};});
+      if(!experts.length&&sh.confirm_expert){
+        experts=[{name:sh.confirm_expert,evidence:sh.confirm_evidence||'',rationale:''},{name:sh.kill_expert||'',evidence:sh.kill_evidence||'',rationale:''}];
+      }
+      return{text:sh.text||'',experts:experts};
+    });
+    newScenario.sub_hypotheses=subs;
+    SCENARIOS[tid]=newScenario;
+    if(subs.length>0){
+      renderMainExpert(tid);
+    }
+  })
+  .catch(function(){
+    var loadEl=document.getElementById('custom-loading-'+tid);
+    if(loadEl)loadEl.textContent='Could not generate sub-hypotheses.';
+  });
+}
+
+/* ── Init ──────────────────────────────────────────────────── */
 (function(){
+  localStorage.removeItem(LOG_KEY);
   const log=loadLog();
   for(const [tid,ts] of Object.entries(log)){
     const card=document.getElementById('card-'+tid);if(!card)continue;
@@ -381,15 +855,20 @@ function chooseExpert(tid,choice){
     const hyp=document.getElementById('hyp-'+tid);
     if(hyp)hyp.style.textDecoration='line-through';
   }
+  for(const s of window.CDD_DATA.scenarios){
+    renderMainExpert(s.template_id);
+  }
+  buildTree();
+  renderChosenExperts();
 })();
 """
 
 
 def render_svg_tree(issue, scenarios):
-    SVG_W, SVG_H = 960, 240
+    SVG_W, SVG_H = 1100, 240
     ROOT_CX = SVG_W // 2
-    ISSUE_Y, ISSUE_W, ISSUE_H = 20, 700, 54
-    HYP_Y, HYP_W, HYP_H = 148, 240, 60
+    ISSUE_Y, ISSUE_W, ISSUE_H = 20, 800, 54
+    HYP_Y, HYP_W, HYP_H = 148, 310, 60
     ELBOW_Y = 118
 
     count = len(scenarios)
@@ -435,7 +914,8 @@ def render_svg_tree(issue, scenarios):
             f'aria-label="Go to {_e(scenario["name"])} scenario"/>'
         )
         parts.append(f'<text x="{cx:.1f}" y="{HYP_Y+15}" text-anchor="middle" fill="rgba(255,255,255,.65)" font-size="9" font-weight="700" letter-spacing="0.09em" pointer-events="none">SCENARIO {scenario["id"]}</text>')
-        parts.append(f'<text x="{cx:.1f}" y="{HYP_Y+34}" text-anchor="middle" fill="white" font-size="13" font-weight="700" pointer-events="none">{_e(scenario["name"])}</text>')
+        short_name = scenario['name'] if len(scenario['name']) <= 30 else scenario['name'][:27] + '…'
+        parts.append(f'<text x="{cx:.1f}" y="{HYP_Y+34}" text-anchor="middle" fill="white" font-size="13" font-weight="700" pointer-events="none">{_e(short_name)}</text>')
         if kw_text:
             parts.append(f'<text x="{cx:.1f}" y="{HYP_Y+52}" text-anchor="middle" fill="rgba(255,255,255,.7)" font-size="9.5" pointer-events="none">{_e(kw_text)}</text>')
 
@@ -447,8 +927,8 @@ def render_svg_tree(issue, scenarios):
 def render_score_bars(probabilities, zero_signal):
     if zero_signal:
         return '<div class="score-bar-row"><span class="score-no-signal">Insufficient keyword signal — scenarios ranked by default order</span></div>'
-    color_map = {'market_dynamics': '#2563EB', 'operational_model': '#059669', 'competitive_movement': '#D97706'}
-    label_map = {'market_dynamics': 'Market Dynamics', 'operational_model': 'Operational Model', 'competitive_movement': 'Competitive Movement'}
+    color_map = {'market_dynamics': '#2563EB', 'operational_model': '#059669', 'competitive_movement': '#D97706', 'growth_scalability': '#7C3AED', 'risk_regulatory': '#DC2626'}
+    label_map = {'market_dynamics': 'Market Dynamics', 'operational_model': 'Operational Model', 'competitive_movement': 'Competitive Movement', 'growth_scalability': 'Growth & Scalability', 'risk_regulatory': 'Risk & Regulatory'}
     parts = []
     for key, prob in sorted(probabilities.items(), key=lambda x: -x[1]):
         color = color_map.get(key, '#64748B')
@@ -484,12 +964,10 @@ def render_scenarios(scenarios):
         prob = s.get('probability', 0)
         prob_html = f'<span class="prob-chip">~{prob}%</span>' if prob > 0 else ''
 
+        main_expert_html = f'<div class="main-expert-zone" id="main-expert-{tid}"></div>'
+
         cards.append(f'''
         <div class="scenario-card" id="card-{tid}" data-template-id="{tid}">
-          <div class="so-what-block">
-            <span class="so-what-label">SO WHAT</span>
-            <p class="so-what-text">{_e(s["so_what"])}</p>
-          </div>
           <div class="scenario-header">
             <div class="scenario-top-row">
               <span class="scenario-badge" style="background:{color}">&nbsp;Scenario {s["id"]}&nbsp;</span>
@@ -502,18 +980,30 @@ def render_scenarios(scenarios):
               <span class="node-label nl-hyp">Hypothesis</span>
               <p class="hyp-text" id="hyp-{tid}">{_e(s["hypothesis"])}</p>
             </div>
+            {main_expert_html}
             {mece_html}
             {trigger_html}
           </div>
-          <button class="drill-confirm-btn" id="btn-confirm-{tid}" onclick="confirmHypothesis('{tid}')">Confirm Hypothesis →</button>
-          <div class="drill-zone" id="drill-{tid}" style="display:none"></div>
+          <button class="so-what-toggle" id="btn-sowhat-{tid}" onclick="toggleSoWhat('{tid}')">Why this hypothesis?</button>
+          <div class="so-what-block" id="sowhat-{tid}">
+            <span class="so-what-label">SO WHAT</span>
+            <p class="so-what-text">{_e(s["so_what"])}</p>
+          </div>
+          <button class="drill-confirm-btn" id="btn-confirm-{tid}" onclick="confirmHypothesis('{tid}')">Explore & Expand ▸</button>
           <div class="scenario-actions">
             <button class="btn-reject" id="btn-reject-{tid}" onclick="rejectScenario('{tid}', this)">Reject</button>
             <button class="btn-delete-red" onclick="deleteScenario('{tid}')">Delete</button>
           </div>
         </div>''')
 
-    return '<div class="scenario-grid">' + ''.join(cards) + '</div>'
+    # Build exploration panels (one per scenario, shown when user clicks Explore)
+    panels = []
+    for s in scenarios:
+        if s['mece_valid']:
+            tid = _e(s['template_id'])
+            panels.append(f'<div class="explore-panel" id="explore-{tid}"></div>')
+
+    return '<div class="scenario-grid">' + ''.join(cards) + '</div>' + ''.join(panels)
 
 
 def build_result_page(form_data, result):
@@ -529,20 +1019,25 @@ def build_result_page(form_data, result):
     score_bars = render_score_bars(result.get('probabilities', {}), result.get('zero_signal', False))
 
     cdd_data = {
+        'issue': result['issue'],
+        'context': {
+            'reference_company': form_data.get('reference_company', ''),
+            'client': form_data.get('client', ''),
+            'client_wants': form_data.get('client_wants', ''),
+            'proj_name': form_data.get('proj_name', ''),
+        },
         'scenarios': [
             {
                 'template_id': s['template_id'],
+                'id': s['id'],
                 'name': s['name'],
+                'color': s['color'],
                 'value_driver': s['value_driver'],
+                'hypothesis': s['hypothesis'],
                 'sub_hypotheses': [
                     {
                         'text': sh['text'],
-                        'confirm_evidence': sh['confirm_evidence'],
-                        'confirm_expert': sh['confirm_expert'],
-                        'confirm_expert_color': sh.get('confirm_expert_color', '#2563EB'),
-                        'kill_evidence': sh['kill_evidence'],
-                        'kill_expert': sh['kill_expert'],
-                        'rationale': sh.get('rationale', ''),
+                        'experts': sh.get('experts', []),
                     }
                     for sh in s['sub_hypotheses']
                 ],
@@ -552,7 +1047,6 @@ def build_result_page(form_data, result):
     }
     js = RESULT_JS.replace('{{ cdd_data_json }}', json.dumps(cdd_data))
 
-    svg = render_svg_tree(result['issue'], result['scenarios'])
     scenarios_html = render_scenarios(result['scenarios'])
 
     return f"""<!DOCTYPE html>
@@ -583,8 +1077,8 @@ def build_result_page(form_data, result):
       <span class="issue-text">{_e(result["issue"])}</span>
     </div>
     <div class="tree-container">
-      <div class="tree-label">Hypothesis Tree — click a node to jump to its scenario</div>
-      {svg}
+      <div class="tree-label">Hypothesis Tree — click a node to jump to its scenario · updates as you confirm</div>
+      <div id="tree-svg"></div>
     </div>
     {score_bars}
     <div class="scenarios-header-row">
@@ -592,6 +1086,20 @@ def build_result_page(form_data, result):
       <button class="export-csv-btn" onclick="exportCSV()">↓ Export CSV</button>
     </div>
     {scenarios_html}
+    <div class="custom-hyp-section">
+      <div class="custom-hyp-title">Add Your Own Hypothesis</div>
+      <div class="custom-hyp-row">
+        <input class="custom-hyp-input" id="custom-hyp-name" placeholder="Scenario name (e.g. Pricing Power Erosion)">
+        <input class="custom-hyp-input" id="custom-hyp-text" placeholder="Your hypothesis statement">
+        <button class="btn-add-hyp" onclick="addCustomHypothesis()">+ Add</button>
+      </div>
+    </div>
+    <div class="custom-hyp-section" style="margin-top:16px">
+      <div class="custom-hyp-title">Chosen Experts</div>
+      <div id="chosen-experts-list" style="display:flex;flex-direction:column;gap:6px">
+        <span style="font-size:12px;color:#94A3B8;font-style:italic">No experts selected yet</span>
+      </div>
+    </div>
   </div>
   <script>{js}</script>
 </body>
@@ -615,6 +1123,19 @@ def generate():
     }
     result = generate_result(form_data)
     return build_result_page(form_data, result)
+
+@app.route('/api/expand', methods=['POST'])
+def api_expand():
+    data = request.get_json()
+    result = generate_sub_sub(
+        data.get('sub_hypothesis', ''),
+        data.get('hypothesis', ''),
+        data.get('reference_company', ''),
+        data.get('client', ''),
+        data.get('client_wants', ''),
+        data.get('proj_name', ''),
+    )
+    return jsonify(result or [])
 
 
 if __name__ == '__main__':
